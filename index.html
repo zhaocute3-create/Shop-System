@@ -19,12 +19,13 @@ button {background:#22c55e;}
 <button onclick="register()">Register</button>
 <button onclick="login()">Login</button>
 </div>
-
+  
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, getDocs } 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+// CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
   authDomain: "accountshop-a94e8.firebaseapp.com",
@@ -32,25 +33,38 @@ const firebaseConfig = {
   appId: "1:396312062190:web:c4ac936bd7f5bc11f0ebff"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
+// INIT
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-window.register = () => {
-  createUserWithEmailAndPassword(auth, email.value, pass.value)
-  .then(user => {
-    alert("Registered! UID: " + user.user.uid);
-  });
-}
+// REGISTER
+window.register = function() {
+  const email = document.querySelector("input[type='email']").value;
+  const password = document.querySelector("input[type='password']").value;
 
-window.login = () => {
-  signInWithEmailAndPassword(auth, email.value, pass.value)
-  .then(() => {
-    location.href = "shop.html";
-  });
-}
+  createUserWithEmailAndPassword(auth, email, password)
+    .then((userCredential) => {
+      alert("Registered Successfully!");
+    })
+    .catch((error) => {
+      alert(error.message);
+    });
+};
+
+// LOGIN
+window.login = function() {
+  const email = document.querySelector("input[type='email']").value;
+  const password = document.querySelector("input[type='password']").value;
+
+  signInWithEmailAndPassword(auth, email, password)
+    .then((userCredential) => {
+      alert("Login Success!");
+      window.location.href = "admin.html"; // redirect
+    })
+    .catch((error) => {
+      alert(error.message);
+    });
+};
 </script>
 
 </body>
