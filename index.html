@@ -13,10 +13,11 @@ body {
 
 .box {
   background:#1e293b;
-  padding:20px;
+  padding:25px;
   margin:80px auto;
   width:300px;
   border-radius:15px;
+  box-shadow:0 0 20px rgba(0,0,0,0.5);
 }
 
 input, button {
@@ -27,10 +28,16 @@ input, button {
   border:none;
 }
 
+input {
+  background:#0f172a;
+  color:white;
+}
+
 button {
   background:#22c55e;
   color:white;
   font-weight:bold;
+  cursor:pointer;
 }
 </style>
 
@@ -52,6 +59,9 @@ button {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } 
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+// 🔥 ADMIN EMAIL
+const ADMIN_EMAIL = "jhonlouiebaid92@gmail.com";
 
 // 🔥 FIREBASE CONFIG
 const firebaseConfig = {
@@ -84,7 +94,7 @@ window.register = function() {
     });
 };
 
-// LOGIN
+// LOGIN (ADMIN + USER SYSTEM)
 window.login = function() {
   const email = document.getElementById("email").value;
   const password = document.getElementById("pass").value;
@@ -96,8 +106,15 @@ window.login = function() {
 
   signInWithEmailAndPassword(auth, email, password)
     .then(() => {
-      alert("Login Success!");
-      window.location.href = "admin.html";
+
+      if (email === ADMIN_EMAIL) {
+        alert("Welcome Admin 🔥");
+        window.location.href = "admin.html";
+      } else {
+        alert("Welcome User 👤");
+        window.location.href = "dashboard.html";
+      }
+
     })
     .catch((error) => {
       alert(error.message);
