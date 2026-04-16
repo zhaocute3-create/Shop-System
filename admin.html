@@ -19,6 +19,7 @@ body {
   border:1px solid #00ffcc;
   padding:10px;
   margin:10px;
+  border-radius:10px;
 }
 
 button {
@@ -28,6 +29,15 @@ button {
   border:none;
   color:white;
   cursor:pointer;
+  border-radius:8px;
+}
+
+input {
+  padding:10px;
+  border-radius:10px;
+  border:none;
+  width:80%;
+  margin:10px;
 }
 </style>
 
@@ -36,6 +46,10 @@ button {
 <body>
 
 <h2>ADMIN PANEL</h2>
+
+<!-- 🔍 SEARCH BAR -->
+<input type="text" id="search" placeholder="Search email..." oninput="searchOrders()">
+
 <div id="orders" class="box"></div>
 
 <script type="module">
@@ -59,6 +73,9 @@ const db = getFirestore(app);
 // ADMIN EMAIL
 const ADMIN_EMAIL = "jhonlouiebaid92@gmail.com";
 
+// STORE ALL ORDERS
+let allOrders = [];
+
 // PROTECT ADMIN
 onAuthStateChanged(auth, (user) => {
   if (!user || user.email !== ADMIN_EMAIL) {
@@ -72,12 +89,24 @@ onAuthStateChanged(auth, (user) => {
 // LOAD ORDERS
 async function loadOrders(){
   const querySnapshot = await getDocs(collection(db, "orders"));
-  document.getElementById("orders").innerHTML = "";
+
+  allOrders = [];
 
   querySnapshot.forEach(docSnap => {
-    let data = docSnap.data();
-    let id = docSnap.id;
+    allOrders.push({
+      id: docSnap.id,
+      ...docSnap.data()
+    });
+  });
 
+  displayOrders(allOrders);
+}
+
+// DISPLAY ORDERS
+function displayOrders(list){
+  document.getElementById("orders").innerHTML = "";
+
+  list.forEach(data => {
     document.getElementById("orders").innerHTML += `
       <div class="order">
         <p>
@@ -91,22 +120,35 @@ async function loadOrders(){
 
         ${data.proof ? `<img src="${data.proof}" width="100%">` : ""}
 
-        <button onclick="approve('${id}')">Approve</button>
+        ${data.status !== "approved" 
+          ? `<button onclick="approve('${data.id}')">Approve</button>` 
+          : `<p>✅ Approved</p>`}
       </div>
     `;
   });
 }
 
-// APPROVE ORDER + AUTO SEND ACCOUNT
+// 🔍 SEARCH FUNCTION
+window.searchOrders = function(){
+  const value = document.getElementById("search").value.toLowerCase();
+
+  const filtered = allOrders.filter(o => 
+    (o.email || "").toLowerCase().includes(value)
+  );
+
+  displayOrders(filtered);
+};
+
+// APPROVE ORDER
 window.approve = async function(id){
   await updateDoc(doc(db, "orders", id), {
     status: "approved",
-    account: "user123\npass123" // 🔥 palitan mo to ng real account
+    account: "user123\npass123"
   });
 
   alert("Order Approved!");
   loadOrders();
-}
+};
 </script>
 
 </body>
