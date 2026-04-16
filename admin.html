@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Admin Panel</title>
+<style>
+body {background:black; color:#00ffcc; font-family:monospace;}
+</style>
+</head>
+
+<body>
+
+<h2>ADMIN PANEL</h2>
+<div id="orders"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, getDocs } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, getDocs } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
+  authDomain: "accountshop-a94e8.firebaseapp.com",
+  projectId: "accountshop-a94e8",
+  appId: "1:396312062190:web:c4ac936bd7f5bc11f0ebff"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// 🔒 PALITAN MO EMAIL MO DITO
+const ADMIN_EMAIL = "jhonlouiebaid92@gmail.com";
+
+async function loadOrders(){
+  const querySnapshot = await getDocs(collection(db, "orders"));
+
+  querySnapshot.forEach(doc => {
+    let data = doc.data();
+
+    document.getElementById("orders").innerHTML += `
+      <p>
+      UID: ${data.uid}<br>
+      Email: ${data.email}<br>
+      Item: ${data.item}<br>
+      Price: ${data.price}<br>
+      Status: ${data.status}
+      </p><hr>
+    `;
+  });
+}
+
+loadOrders();
+</script>
+
+</body>
+</html>
