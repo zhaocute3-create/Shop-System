@@ -1,31 +1,59 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Login</title>
+<title>Shop-System</title>
+
 <style>
-body { background:#0f172a; color:white; text-align:center; font-family:Arial;}
-.box {background:#1e293b; padding:20px; margin:50px auto; width:300px; border-radius:15px;}
-input,button {width:90%; padding:10px; margin:5px; border-radius:10px; border:none;}
-button {background:#22c55e;}
+body {
+  background:#0f172a;
+  color:white;
+  text-align:center;
+  font-family:Arial;
+}
+
+.box {
+  background:#1e293b;
+  padding:20px;
+  margin:80px auto;
+  width:300px;
+  border-radius:15px;
+}
+
+input, button {
+  width:90%;
+  padding:10px;
+  margin:5px;
+  border-radius:10px;
+  border:none;
+}
+
+button {
+  background:#22c55e;
+  color:white;
+  font-weight:bold;
+}
 </style>
+
 </head>
 
 <body>
 
 <div class="box">
-<h2>Login / Register</h2>
-<input id="email" placeholder="Email"><br>
-<input id="pass" type="password" placeholder="Password"><br>
-<button onclick="register()">Register</button>
-<button onclick="login()">Login</button>
+  <h2>Login / Register</h2>
+
+  <input id="email" type="email" placeholder="Email"><br>
+  <input id="pass" type="password" placeholder="Password"><br>
+
+  <button onclick="register()">Register</button>
+  <button onclick="login()">Login</button>
 </div>
-  
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } 
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// CONFIG
+// 🔥 FIREBASE CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
   authDomain: "accountshop-a94e8.firebaseapp.com",
@@ -39,11 +67,16 @@ const auth = getAuth(app);
 
 // REGISTER
 window.register = function() {
-  const email = document.querySelector("input[type='email']").value;
-  const password = document.querySelector("input[type='password']").value;
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("pass").value;
+
+  if (!email || !password) {
+    alert("Fill all fields!");
+    return;
+  }
 
   createUserWithEmailAndPassword(auth, email, password)
-    .then((userCredential) => {
+    .then(() => {
       alert("Registered Successfully!");
     })
     .catch((error) => {
@@ -53,13 +86,18 @@ window.register = function() {
 
 // LOGIN
 window.login = function() {
-  const email = document.querySelector("input[type='email']").value;
-  const password = document.querySelector("input[type='password']").value;
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("pass").value;
+
+  if (!email || !password) {
+    alert("Fill all fields!");
+    return;
+  }
 
   signInWithEmailAndPassword(auth, email, password)
-    .then((userCredential) => {
+    .then(() => {
       alert("Login Success!");
-      window.location.href = "admin.html"; // redirect
+      window.location.href = "admin.html";
     })
     .catch((error) => {
       alert(error.message);
