@@ -2,9 +2,179 @@
 <html>
 <head>
 <title>User Dashboard</title>
+
+<style>
+body {
+  margin:0;
+  font-family:Arial;
+  background:linear-gradient(135deg,#0f172a,#020617);
+  color:white;
+}
+
+.header {
+  background:#020617;
+  padding:15px;
+  text-align:center;
+  font-size:20px;
+  font-weight:bold;
+  border-bottom:1px solid #1e293b;
+}
+
+.container {
+  padding:20px;
+}
+
+.card {
+  background:#1e293b;
+  border-radius:15px;
+  padding:20px;
+  margin-bottom:15px;
+}
+
+input, button {
+  width:100%;
+  padding:10px;
+  margin:5px 0;
+  border-radius:10px;
+  border:none;
+}
+
+button {
+  background:#22c55e;
+  color:white;
+  font-weight:bold;
+}
+
+.order {
+  background:#334155;
+  padding:10px;
+  margin:5px;
+  border-radius:10px;
+}
+</style>
+
 </head>
-<body style="background:#0f172a;color:white;text-align:center;">
-<h2>Welcome User 👤</h2>
-<p>Hindi ka admin.</p>
+
+<body>
+
+<div class="header">
+  🎮 Shop Dashboard
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <h3>Welcome 👤</h3>
+    <p id="userEmail">Loading...</p>
+  </div>
+
+  <!-- 🖼️ PRODUCT -->
+  <div class="card">
+    <h3>🔥 Premium Game Account</h3>
+
+    <img src="https://i.imgur.com/8Km9tLL.png" style="width:100%;border-radius:10px;">
+
+    <p>Price: ₱50</p>
+
+    <input id="name" placeholder="Your Name">
+    <input id="ref" placeholder="GCash Reference">
+    <input type="file" id="proof">
+
+    <button onclick="buy()">Buy Now</button>
+  </div>
+
+  <!-- 📦 ORDERS -->
+  <div class="card">
+    <h3>My Orders</h3>
+    <div id="myOrders"></div>
+  </div>
+
+  <div class="card">
+    <button onclick="logout()" style="background:red;">Logout</button>
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
+  authDomain: "accountshop-a94e8.firebaseapp.com",
+  projectId: "accountshop-a94e8",
+  appId: "1:396312062190:web:c4ac936bd7f5bc11f0ebff"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// USER CHECK
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    window.location.href = "index.html";
+  } else {
+    document.getElementById("userEmail").innerText = user.email;
+    loadMyOrders();
+  }
+});
+
+// BUY
+window.buy = async function() {
+  let user = auth.currentUser;
+  if (!user) return alert("Login muna!");
+
+  let file = document.getElementById("proof").files[0];
+  let proofURL = file ? URL.createObjectURL(file) : "";
+
+  await addDoc(collection(db, "orders"), {
+    uid: user.uid,
+    email: user.email,
+    item: "Premium Account",
+    price: "₱50",
+    reference: document.getElementById("ref").value,
+    proof: proofURL,
+    status: "pending"
+  });
+
+  alert("Order submitted!");
+  loadMyOrders();
+};
+
+// LOAD USER ORDERS
+async function loadMyOrders(){
+  let user = auth.currentUser;
+  if (!user) return;
+
+  let data = await getDocs(collection(db, "orders"));
+  document.getElementById("myOrders").innerHTML = "";
+
+  data.forEach(doc => {
+    let o = doc.data();
+
+    if (o.email === user.email) {
+      document.getElementById("myOrders").innerHTML += `
+        <div class="order">
+          <p>Status: ${o.status}</p>
+          ${o.status === "approved" ? `<p>Account:<br>${o.account}</p>` : ""}
+        </div>
+      `;
+    }
+  });
+}
+
+// LOGOUT
+window.logout = function() {
+  signOut(auth).then(() => {
+    window.location.href = "index.html";
+  });
+};
+</script>
+
 </body>
 </html>
