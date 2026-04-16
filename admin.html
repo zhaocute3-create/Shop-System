@@ -20,6 +20,15 @@ body {
   padding:10px;
   margin:10px;
 }
+
+button {
+  padding:8px;
+  margin-top:5px;
+  background:#22c55e;
+  border:none;
+  color:white;
+  cursor:pointer;
+}
 </style>
 
 </head>
@@ -32,10 +41,10 @@ body {
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, getDocs } 
+import { getFirestore, collection, getDocs, doc, updateDoc } 
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// 🔥 CONFIG
+// CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
   authDomain: "accountshop-a94e8.firebaseapp.com",
@@ -43,45 +52,60 @@ const firebaseConfig = {
   appId: "1:396312062190:web:c4ac936bd7f5bc11f0ebff"
 };
 
-// INIT
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// 🔐 ADMIN EMAIL
+// ADMIN EMAIL
 const ADMIN_EMAIL = "jhonlouiebaid92@gmail.com";
 
-// 🔒 PROTECT ADMIN PAGE
+// PROTECT ADMIN
 onAuthStateChanged(auth, (user) => {
   if (!user || user.email !== ADMIN_EMAIL) {
     alert("Access Denied!");
     window.location.href = "index.html";
   } else {
-    loadOrders(); // load only if admin
+    loadOrders();
   }
 });
 
 // LOAD ORDERS
 async function loadOrders(){
   const querySnapshot = await getDocs(collection(db, "orders"));
-
   document.getElementById("orders").innerHTML = "";
 
-  querySnapshot.forEach(doc => {
-    let data = doc.data();
+  querySnapshot.forEach(docSnap => {
+    let data = docSnap.data();
+    let id = docSnap.id;
 
     document.getElementById("orders").innerHTML += `
       <div class="order">
-      <p>
-      UID: ${data.uid || "N/A"}<br>
-      Email: ${data.email || "N/A"}<br>
-      Item: ${data.item || "N/A"}<br>
-      Price: ${data.price || "N/A"}<br>
-      Status: ${data.status || "pending"}
-      </p>
+        <p>
+        UID: ${data.uid || "N/A"}<br>
+        Email: ${data.email || "N/A"}<br>
+        Item: ${data.item || "N/A"}<br>
+        Price: ${data.price || "N/A"}<br>
+        Ref: ${data.reference || "N/A"}<br>
+        Status: ${data.status || "pending"}
+        </p>
+
+        ${data.proof ? `<img src="${data.proof}" width="100%">` : ""}
+
+        <button onclick="approve('${id}')">Approve</button>
       </div>
     `;
   });
+}
+
+// APPROVE ORDER + AUTO SEND ACCOUNT
+window.approve = async function(id){
+  await updateDoc(doc(db, "orders", id), {
+    status: "approved",
+    account: "user123\npass123" // 🔥 palitan mo to ng real account
+  });
+
+  alert("Order Approved!");
+  loadOrders();
 }
 </script>
 
