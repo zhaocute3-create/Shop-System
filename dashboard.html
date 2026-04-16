@@ -43,6 +43,7 @@ button {
   background:#22c55e;
   color:white;
   font-weight:bold;
+  cursor:pointer;
 }
 
 .order {
@@ -63,12 +64,13 @@ button {
 
 <div class="container">
 
+  <!-- USER -->
   <div class="card">
     <h3>Welcome 👤</h3>
     <p id="userEmail">Loading...</p>
   </div>
 
-  <!-- 🖼️ PRODUCT -->
+  <!-- PRODUCT -->
   <div class="card">
     <h3>🔥 Premium Game Account</h3>
 
@@ -76,19 +78,19 @@ button {
 
     <p>Price: ₱50</p>
 
-    <input id="name" placeholder="Your Name">
     <input id="ref" placeholder="GCash Reference">
     <input type="file" id="proof">
 
     <button onclick="buy()">Buy Now</button>
   </div>
 
-  <!-- 📦 ORDERS -->
+  <!-- ORDERS -->
   <div class="card">
     <h3>My Orders</h3>
     <div id="myOrders"></div>
   </div>
 
+  <!-- LOGOUT -->
   <div class="card">
     <button onclick="logout()" style="background:red;">Logout</button>
   </div>
@@ -114,6 +116,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// ⏱️ Anti-spam
+let lastBuyTime = 0;
+
 // USER CHECK
 onAuthStateChanged(auth, (user) => {
   if (!user) {
@@ -124,10 +129,25 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// BUY
+// BUY FUNCTION
 window.buy = async function() {
+  const now = Date.now();
+
+  // Anti spam 10 seconds
+  if (now - lastBuyTime < 10000) {
+    alert("Wait 10 seconds before buying again!");
+    return;
+  }
+
   let user = auth.currentUser;
   if (!user) return alert("Login muna!");
+
+  let ref = document.getElementById("ref").value;
+
+  if (!ref) {
+    alert("GCash reference required!");
+    return;
+  }
 
   let file = document.getElementById("proof").files[0];
   let proofURL = file ? URL.createObjectURL(file) : "";
@@ -137,16 +157,23 @@ window.buy = async function() {
     email: user.email,
     item: "Premium Account",
     price: "₱50",
-    reference: document.getElementById("ref").value,
+    reference: ref,
     proof: proofURL,
     status: "pending"
   });
 
+  lastBuyTime = now;
+
   alert("Order submitted!");
+
+  // clear input
+  document.getElementById("ref").value = "";
+  document.getElementById("proof").value = "";
+
   loadMyOrders();
 };
 
-// LOAD USER ORDERS
+// LOAD ORDERS
 async function loadMyOrders(){
   let user = auth.currentUser;
   if (!user) return;
@@ -160,8 +187,13 @@ async function loadMyOrders(){
     if (o.email === user.email) {
       document.getElementById("myOrders").innerHTML += `
         <div class="order">
+          <p>Item: ${o.item}</p>
+          <p>Price: ${o.price}</p>
           <p>Status: ${o.status}</p>
-          ${o.status === "approved" ? `<p>Account:<br>${o.account}</p>` : ""}
+
+          ${o.status === "approved" 
+            ? `<p>✅ Account:<br>${o.account}</p>` 
+            : `<p>⏳ Waiting for approval</p>`}
         </div>
       `;
     }
