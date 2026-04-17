@@ -9,10 +9,19 @@
 
 <script type="module">
 import { db, auth } from "./firebase.js";
-import { collection,query,where,onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+collection,query,where,onSnapshot,doc,setDoc,deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-auth.onAuthStateChanged(user=>{
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+// ONLINE TRACKER
+onAuthStateChanged(auth, async user=>{
  if(!user) location="index.html";
+
+ let ref=doc(db,"presence",user.uid);
+ await setDoc(ref,{email:user.email});
+ window.addEventListener("beforeunload",()=>deleteDoc(ref));
 
  const q=query(collection(db,"orders"),where("user","==",user.email));
 
@@ -25,6 +34,9 @@ auth.onAuthStateChanged(user=>{
    <div>
    ${o.product}<br>
    ${o.status}<br>
+   ₱${o.price}<br>
+
+   ${o.receipt?`<img src="${o.receipt}" width="100%">`:""}
 
    ${o.status==="approved"?`
    USER:${o.username}<br>
@@ -32,7 +44,6 @@ auth.onAuthStateChanged(user=>{
    `:"Waiting..."}
    </div><hr>`;
   });
-
   orders.innerHTML=html;
  });
 });
