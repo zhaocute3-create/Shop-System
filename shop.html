@@ -3,98 +3,95 @@
 <head>
 <style>
 body{background:#020617;color:white;font-family:sans-serif}
-.card{
-  border:1px solid #00ff88;
-  padding:10px;
-  margin:10px;
-  border-radius:10px;
-  box-shadow:0 0 10px #00ff88;
-}
-button{
-  background:#00ff88;
-  border:none;
-  padding:10px;
-  border-radius:8px;
-  box-shadow:0 0 8px #00ff88;
-}
+.card{border:1px solid #00ff88;margin:10px;padding:10px}
+button{background:#00ff88;border:none;padding:10px}
 </style>
 </head>
 
 <body>
 
-<h2 style="text-align:center;">🛒 SHOP</h2>
-
+<h2>🛒 SHOP</h2>
 <div id="stock"></div>
 
 <script type="module">
 import { db, auth } from "./firebase.js";
 
 import {
-  collection,
-  addDoc,
-  onSnapshot,
-  doc,
-  setDoc,
-  deleteDoc
+collection,onSnapshot,addDoc,
+doc,setDoc,deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-import {
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const stockDiv = document.getElementById("stock");
-
-// 👥 ONLINE TRACKER + AUTH CHECK
+// ONLINE USERS
 onAuthStateChanged(auth, async user=>{
-  if(!user) return location="index.html";
+ if(!user) return location="index.html";
 
-  const ref = doc(db,"presence",user.uid);
+ let ref=doc(db,"presence",user.uid);
 
-  await setDoc(ref,{
+ await setDoc(ref,{email:user.email});
+
+ window.addEventListener("beforeunload",()=>{
+  deleteDoc(ref);
+ });
+});
+
+// LOAD STOCK
+onSnapshot(collection(db,"accounts"),snap=>{
+ let html="";
+ snap.forEach(d=>{
+  let s=d.data();
+
+  if(s.status==="available"){
+   html+=`
+   <div class="card">
+   ${s.product}<br>
+   💰 ₱${s.price}<br>
+
+   ${s.image1?`<img src="${s.image1}" width="100%">`:""}
+   ${s.image2?`<img src="${s.image2}" width="100%">`:""}
+   ${s.image3?`<img src="${s.image3}" width="100%">`:""}
+
+   <button onclick="buy('${d.id}','${s.product}')">BUY</button>
+   </div>`;
+  }
+ });
+
+ stock.innerHTML=html;
+});
+
+// BUY
+window.buy=async(id,product)=>{
+ let user=auth.currentUser;
+
+ let ref=prompt("Enter GCash Ref:");
+ if(!ref)return;
+
+ let input=document.createElement("input");
+ input.type="file";
+
+ input.onchange=()=>{
+  let file=input.files[0];
+
+  let reader=new FileReader();
+  reader.onload=async(e)=>{
+
+   await addDoc(collection(db,"orders"),{
     email:user.email,
-    online:true
-  });
+    accId:id,
+    product:product,
+    ref:ref,
+    receipt:e.target.result,
+    status:"pending"
+   });
 
-  window.addEventListener("beforeunload",()=>{
-    deleteDoc(ref);
-  });
-});
+   alert("Order sent ✅");
+  };
 
-// 📦 LOAD STOCK REALTIME
-onSnapshot(collection(db,"accounts"), snap=>{
-  let html="";
+  reader.readAsDataURL(file);
+ };
 
-  snap.forEach(docSnap=>{
-    let s = docSnap.data();
-
-    if(s.status === "available"){
-      html+=`
-      <div class="card">
-        <b>${s.product}</b><br><br>
-        ${s.image ? `<img src="${s.image}" width="100%">` : ""}<br><br>
-        <button onclick="buy('${docSnap.id}','${s.product}')">BUY</button>
-      </div>`;
-    }
-  });
-
-  stockDiv.innerHTML = html || "<p>No available stock</p>";
-});
-
-// 🛒 BUY FUNCTION
-window.buy = async (id, product) => {
-  let user = auth.currentUser;
-
-  if (!user) return alert("Login muna");
-
-  await addDoc(collection(db, "orders"), {
-    email: user.email, // 🔥 FIX (use email)
-    accId: id,
-    product: product,
-    status: "pending",
-    created: Date.now()
-  });
-
-  alert("Order sent 🔥");
+ input.click();
 };
 </script>
 
