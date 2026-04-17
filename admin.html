@@ -47,7 +47,16 @@ input {
 
 <h2>ADMIN PANEL 🔥 (LIVE)</h2>
 
-<!-- SEARCH -->
+<!-- 📦 ADD STOCK PANEL -->
+<div class="box">
+  <h3>Add Stock</h3>
+  <input type="text" id="stockUser" placeholder="Username">
+  <input type="text" id="stockPass" placeholder="Password">
+  <button onclick="addStock()">Add Stock</button>
+  <p id="stockCount">Stock: Loading...</p>
+</div>
+
+<!-- 🔍 SEARCH -->
 <input type="text" id="search" placeholder="Search email..." oninput="searchOrders()">
 
 <div id="orders" class="box"></div>
@@ -67,7 +76,12 @@ import {
   collection, 
   onSnapshot, 
   doc, 
-  updateDoc 
+  updateDoc,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  limit
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // CONFIG
@@ -82,7 +96,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// 🔥 SAVE SESSION
+// SAVE SESSION
 await setPersistence(auth, browserLocalPersistence);
 
 // ADMIN EMAIL
@@ -91,7 +105,7 @@ const ADMIN_EMAIL = "jhonlouiebaid92@gmail.com";
 // STORE
 let allOrders = [];
 
-// 🔐 AUTH CHECK (FIXED)
+// 🔐 AUTH CHECK
 onAuthStateChanged(auth, (user) => {
 
   if (user === null) return;
@@ -102,7 +116,9 @@ onAuthStateChanged(auth, (user) => {
     return;
   }
 
-  // 🔥 REAL-TIME ORDERS
+  loadStockCount();
+
+  // REAL-TIME ORDERS
   onSnapshot(collection(db, "orders"), (snapshot) => {
 
     allOrders = [];
@@ -118,6 +134,38 @@ onAuthStateChanged(auth, (user) => {
   });
 
 });
+
+// 📦 ADD STOCK
+window.addStock = async function(){
+  let user = document.getElementById("stockUser").value;
+  let pass = document.getElementById("stockPass").value;
+
+  if(!user || !pass){
+    alert("Fill all fields!");
+    return;
+  }
+
+  await addDoc(collection(db, "accounts"), {
+    username: user,
+    password: pass,
+    status: "available"
+  });
+
+  alert("✅ Stock Added!");
+
+  document.getElementById("stockUser").value = "";
+  document.getElementById("stockPass").value = "";
+
+  loadStockCount();
+};
+
+// 📊 STOCK COUNT
+async function loadStockCount(){
+  const q = query(collection(db,"accounts"), where("status","==","available"));
+  const snap = await getDocs(q);
+
+  document.getElementById("stockCount").innerText = "Stock: " + snap.size;
+}
 
 // DISPLAY
 function displayOrders(list){
@@ -145,7 +193,7 @@ function displayOrders(list){
   });
 }
 
-// 🔍 SEARCH
+// SEARCH
 window.searchOrders = function(){
   const value = document.getElementById("search").value.toLowerCase();
 
@@ -156,14 +204,39 @@ window.searchOrders = function(){
   displayOrders(filtered);
 };
 
-// ✅ APPROVE
-window.approve = async function(id){
-  await updateDoc(doc(db, "orders", id), {
-    status: "approved",
-    account: "user123\npass123"
+// 🔥 APPROVE WITH STOCK SYSTEM
+window.approve = async function(orderId){
+
+  const q = query(
+    collection(db, "accounts"),
+    where("status", "==", "available"),
+    limit(1)
+  );
+
+  const snap = await getDocs(q);
+
+  if(snap.empty){
+    alert("❌ No stock available!");
+    return;
+  }
+
+  const accDoc = snap.docs[0];
+  const acc = accDoc.data();
+
+  // mark as sold
+  await updateDoc(doc(db, "accounts", accDoc.id), {
+    status: "sold"
   });
 
-  alert("Approved!");
+  // send to order
+  await updateDoc(doc(db, "orders", orderId), {
+    status: "approved",
+    account: `USER: ${acc.username}\nPASS: ${acc.password}`
+  });
+
+  alert("✅ Auto account sent!");
+
+  loadStockCount();
 };
 </script>
 
