@@ -11,16 +11,13 @@ body {
   color:white;
 }
 
-/* HEADER */
 .header {
   padding:15px;
   text-align:center;
-  background:#020617;
   font-weight:bold;
   font-size:20px;
 }
 
-/* GRID SHOP */
 .container {
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
@@ -28,7 +25,6 @@ body {
   padding:15px;
 }
 
-/* CARD */
 .card {
   background:#1e293b;
   padding:15px;
@@ -51,7 +47,16 @@ body {
   font-size:12px;
 }
 
-/* BUTTON */
+.reserved {
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:orange;
+  padding:5px 10px;
+  border-radius:10px;
+  font-size:12px;
+}
+
 button {
   width:100%;
   padding:10px;
@@ -62,7 +67,6 @@ button {
   color:white;
 }
 
-/* INPUT */
 input {
   width:100%;
   padding:10px;
@@ -71,15 +75,11 @@ input {
   border-radius:10px;
 }
 </style>
-
 </head>
 
 <body>
 
-<div class="header">
-🎮 Game Account Shop
-</div>
-
+<div class="header">🎮 Game Account Shop</div>
 <div class="container" id="shop"></div>
 
 <script type="module">
@@ -99,6 +99,7 @@ import {
   updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+// CONFIG
 const firebaseConfig = {
   apiKey: "AIza...",
   authDomain: "...",
@@ -110,48 +111,60 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// 🔐 CHECK LOGIN
-onAuthStateChanged(auth, (user) => {
-  if (!user) {
-    window.location.replace("index.html");
-  }
-});
-
 // ⏱️ Anti spam
 let lastBuy = 0;
 
-// 🔥 LOAD ACCOUNTS (REAL-TIME)
-onSnapshot(collection(db,"accounts"), snap => {
+// 🔐 AUTH + LOAD SHOP
+onAuthStateChanged(auth, (user) => {
 
-  let html = "";
+  if (!user) {
+    window.location.replace("index.html");
+    return;
+  }
 
-  snap.forEach(docSnap => {
-    let a = docSnap.data();
-    let id = docSnap.id;
-
-    html += `
-    <div class="card">
-      ${a.status === "sold" ? `<div class="sold">SOLD</div>` : ""}
-
-      <img src="${a.image || ''}">
-      <h3>${a.product}</h3>
-      <p>Account #${id.slice(0,5)}</p>
-
-      <input id="ref_${id}" placeholder="GCash Ref">
-
-      ${
-        a.status === "available"
-        ? `<button onclick="buy('${id}')">Buy</button>`
-        : `<button disabled>SOLD</button>`
-      }
-    </div>`;
-  });
-
-  document.getElementById("shop").innerHTML = html;
+  // ✅ LOAD SHOP ONLY IF LOGGED IN
+  loadShop(user);
 });
 
-// 🛒 BUY EXACT ACCOUNT
-window.buy = async function(id){
+// 🔥 LOAD SHOP
+function loadShop(user){
+  onSnapshot(collection(db,"accounts"), snap => {
+
+    let html = "";
+
+    snap.forEach(docSnap => {
+      let a = docSnap.data();
+      let id = docSnap.id;
+
+      html += `
+      <div class="card">
+
+        ${a.status === "sold" ? `<div class="sold">SOLD</div>` : ""}
+        ${a.status === "reserved" ? `<div class="reserved">RESERVED</div>` : ""}
+
+        <img src="${a.image || 'https://via.placeholder.com/300'}">
+
+        <h3>${a.product}</h3>
+        <p>₱${a.price || 50}</p>
+        <p>ID: ${id.slice(0,5)}</p>
+
+        <input id="ref_${id}" placeholder="GCash Ref">
+
+        ${
+          a.status === "available"
+          ? `<button onclick="buy('${id}','${a.product}','${a.price || 50}')">Buy</button>`
+          : `<button disabled>${a.status.toUpperCase()}</button>`
+        }
+
+      </div>`;
+    });
+
+    document.getElementById("shop").innerHTML = html;
+  });
+}
+
+// 🛒 BUY
+window.buy = async function(id, product, price){
 
   const now = Date.now();
 
@@ -165,13 +178,17 @@ window.buy = async function(id){
 
   if(!ref) return alert("Enter GCash Ref!");
 
+  // ✅ CREATE ORDER (COMPLETE DATA)
   await addDoc(collection(db,"orders"),{
     email:user.email,
     accountId:id,
+    item:product,
+    price:price,
+    reference:ref,
     status:"pending"
   });
 
-  // 🔒 LOCK ACCOUNT
+  // 🔒 RESERVE ACCOUNT
   await updateDoc(doc(db,"accounts",id),{
     status:"reserved"
   });
