@@ -1,80 +1,54 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Shop</title>
 <style>
-body{background:#020617;color:white;font-family:Arial;}
-.container{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;padding:10px;}
-.card{background:#1e293b;padding:10px;border-radius:10px;}
-img{width:100%;border-radius:10px;}
-button,input{width:100%;margin-top:5px;padding:10px;border:none;border-radius:10px;}
-button{background:#22c55e;}
+body{background:#020617;color:white}
+.card{border:1px solid #00ff88;padding:10px;margin:10px}
+button{background:#00ff88;border:none;padding:10px}
 </style>
 </head>
 <body>
 
-<h2 style="text-align:center;">🎮 Shop</h2>
-<div class="container" id="shop"></div>
+<h2>🛒 SHOP</h2>
+<div id="stock"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth,onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { db, auth } from "./firebase.js";
+
 import {
-getFirestore,collection,onSnapshot,addDoc,doc,updateDoc
+collection,onSnapshot,addDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const firebaseConfig = { apiKey:"AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA", authDomain:"accountshop-a94e8.firebaseapp.com", projectId:"accountshop-a94e8", appId:1:396312062190:web:c4ac936bd7f5bc11f0ebff" };
-
-const app=initializeApp(firebaseConfig);
-const auth=getAuth(app);
-const db=getFirestore(app);
-
-onAuthStateChanged(auth,user=>{
-if(!user) return location="index.html";
-
 onSnapshot(collection(db,"accounts"),snap=>{
-shop.innerHTML="";
+ let html="";
+ snap.forEach(docu=>{
+  let s=docu.data();
 
-snap.forEach(docSnap=>{
-let a=docSnap.data();
-let id=docSnap.id;
-
-console.log(a); // 👈 debug
-
-if(!a.image) return;
-
-if((a.status || "").trim().toLowerCase() !== "available") return;
-
-shop.innerHTML+=`
-<div class="card">
-<img src="${a.image}">
-<h3>${a.product}</h3>
-<p>${a.username}</p>
-
-<input id="ref_${id}" placeholder="GCash Ref">
-
-<button onclick="buy('${id}')">BUY</button>
-</div>
-`;
-});
+  if(s.status==="available"){
+   html+=`
+   <div class="card">
+   ${s.product}<br>
+   ${s.username}<br>
+   <img src="${s.image}" width="100%">
+   <button onclick="buy('${docu.id}')">BUY</button>
+   </div>`;
+  }
+ });
+ stock.innerHTML=html;
 });
 
 window.buy=async(id)=>{
-let ref=document.getElementById("ref_"+id).value;
-if(!ref) return alert("Enter ref");
+ let user=auth.currentUser;
 
-let user=auth.currentUser;
+ await addDoc(collection(db,"orders"),{
+  email:user.email,
+  accId:id,
+  status:"pending"
+ });
 
-await addDoc(collection(db,"orders"),{
-email:user.email,
-accountId:id,
-status:"pending"
-});
-
-await updateDoc(doc(db,"accounts",id),{status:"reserved"});
-
-alert("Order placed!");
+ alert("📥 Order Sent");
 };
 </script>
+
 </body>
 </html>
