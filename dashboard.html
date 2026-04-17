@@ -1,99 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Shop Dashboard</title>
+<title>Shop</title>
 
 <style>
-body {
-  margin:0;
-  font-family:Arial;
-  background:#020617;
-  color:white;
-}
-
-/* LOADING */
-#loading {
-  position:fixed;
-  width:100%;
-  height:100%;
-  background:#020617;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  flex-direction:column;
-  z-index:999;
-}
-
-/* HEADER */
-.header {
-  padding:15px;
-  text-align:center;
-  font-weight:bold;
-  font-size:20px;
-}
-
-/* GRID */
-.container {
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-  gap:15px;
-  padding:15px;
-}
-
-.card {
-  background:#1e293b;
-  padding:15px;
-  border-radius:15px;
-  position:relative;
-}
-
-.card img {
-  width:100%;
-  border-radius:10px;
-}
-
-.sold {
-  position:absolute;
-  top:10px;
-  right:10px;
-  background:red;
-  padding:5px 10px;
-  border-radius:10px;
-  font-size:12px;
-}
-
-button {
-  width:100%;
-  padding:10px;
-  margin-top:5px;
-  border:none;
-  border-radius:10px;
-  background:#22c55e;
-  color:white;
-}
-
-input {
-  width:100%;
-  padding:10px;
-  margin-top:5px;
-  border:none;
-  border-radius:10px;
-}
+body{margin:0;background:#020617;color:white;font-family:Arial;}
+#loading{position:fixed;width:100%;height:100%;display:flex;justify-content:center;align-items:center;background:#020617;}
+.container{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px;padding:15px;}
+.card{background:#1e293b;padding:15px;border-radius:15px;}
+button,input{width:100%;padding:10px;margin-top:5px;border:none;border-radius:10px;}
+button{background:#22c55e;}
 </style>
 
 </head>
 
 <body>
 
-<!-- LOADING -->
-<div id="loading">
-  <h2>Loading...</h2>
-</div>
-
-<!-- MAIN -->
+<div id="loading">Loading...</div>
 <div id="main" style="display:none;">
-  <div class="header">🎮 Game Account Shop</div>
-  <div class="container" id="shop"></div>
+<h2 style="text-align:center;">🎮 Shop</h2>
+<div class="container" id="shop"></div>
 </div>
 
 <script type="module">
@@ -115,106 +41,82 @@ import {
   updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// 🔥 YOUR REAL CONFIG (wag ... dapat buo)
 const firebaseConfig = {
-  apiKey: "YOUR_REAL_APIKEY",
-  authDomain: "YOUR_REAL_AUTHDOMAIN",
-  projectId: "YOUR_REAL_PROJECTID",
-  appId: "YOUR_REAL_APPID"
+  apiKey: "AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
+  authDomain: "accountshop-a94e8.firebaseapp.com",
+  projectId: "accountshop-a94e8",
+  appId: "1:396312062190:web:c4ac936bd7f5bc11f0ebff"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// 🔥 KEEP LOGIN SESSION
 await setPersistence(auth, browserLocalPersistence);
 
-// ⏱️ Anti spam
-let lastBuy = 0;
+let lastBuy=0;
 
-// 🔐 FIXED AUTH CHECK (NO LOOP)
-onAuthStateChanged(auth, (user) => {
+// 🔐 FIX LOOP
+onAuthStateChanged(auth,(user)=>{
+  if(user===null) return;
 
-  // ⚠️ WAIT muna wag redirect agad
-  if (user === null) return;
-
-  if (!user) {
-    window.location.replace("index.html");
+  if(!user){
+    location.replace("index.html");
     return;
   }
 
-  // ✅ SHOW UI
-  document.getElementById("loading").style.display = "none";
-  document.getElementById("main").style.display = "block";
+  loading.style.display="none";
+  main.style.display="block";
 
   loadShop(user);
 });
 
-// 🔥 LOAD SHOP
 function loadShop(user){
+  onSnapshot(collection(db,"accounts"),snap=>{
+    shop.innerHTML="";
 
-  onSnapshot(collection(db,"accounts"), snap => {
+    snap.forEach(docSnap=>{
+      let a=docSnap.data();
+      let id=docSnap.id;
 
-    let html = "";
-
-    snap.forEach(docSnap => {
-      let a = docSnap.data();
-      let id = docSnap.id;
-
-      html += `
+      shop.innerHTML+=`
       <div class="card">
-        ${a.status === "sold" ? `<div class="sold">SOLD</div>` : ""}
-
-        <img src="${a.image || 'https://via.placeholder.com/300'}">
         <h3>${a.product}</h3>
-        <p>Account #${id.slice(0,5)}</p>
+        <p>Status: ${a.status}</p>
 
         <input id="ref_${id}" placeholder="GCash Ref">
 
         ${
-          a.status === "available"
+          a.status==="available"
           ? `<button onclick="buy('${id}')">Buy</button>`
           : `<button disabled>SOLD</button>`
         }
       </div>`;
     });
-
-    document.getElementById("shop").innerHTML = html;
   });
 }
 
-// 🛒 BUY
-window.buy = async function(id){
+window.buy=async(id)=>{
+  let now=Date.now();
+  if(now-lastBuy<10000) return alert("Wait 10s");
 
-  const now = Date.now();
+  let user=auth.currentUser;
+  let ref=document.getElementById("ref_"+id).value;
 
-  if(now - lastBuy < 10000){
-    alert("Wait 10 seconds!");
-    return;
-  }
+  if(!ref) return alert("Enter ref");
 
-  let user = auth.currentUser;
-  let ref = document.getElementById("ref_"+id).value;
-
-  if(!ref) return alert("Enter GCash Ref!");
-
-  // SAVE ORDER
   await addDoc(collection(db,"orders"),{
     email:user.email,
     accountId:id,
-    reference: ref,
     status:"pending"
   });
 
-  // 🔒 LOCK ACCOUNT
   await updateDoc(doc(db,"accounts",id),{
     status:"reserved"
   });
 
-  lastBuy = now;
-
-  alert("Order placed!");
+  lastBuy=now;
+  alert("Ordered!");
 };
 </script>
 
