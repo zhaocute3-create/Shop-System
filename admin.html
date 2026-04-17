@@ -45,18 +45,30 @@ input {
 
 <body>
 
-<h2>ADMIN PANEL</h2>
+<h2>ADMIN PANEL 🔥 (LIVE)</h2>
 
-<!-- 🔍 SEARCH BAR -->
+<!-- SEARCH -->
 <input type="text" id="search" placeholder="Search email..." oninput="searchOrders()">
 
 <div id="orders" class="box"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, updateDoc } 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import { 
+  getAuth, 
+  onAuthStateChanged, 
+  setPersistence, 
+  browserLocalPersistence 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+import { 
+  getFirestore, 
+  collection, 
+  onSnapshot, 
+  doc, 
+  updateDoc 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // CONFIG
 const firebaseConfig = {
@@ -70,39 +82,44 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// 🔥 SAVE SESSION
+await setPersistence(auth, browserLocalPersistence);
+
 // ADMIN EMAIL
 const ADMIN_EMAIL = "jhonlouiebaid92@gmail.com";
 
-// STORE ALL ORDERS
+// STORE
 let allOrders = [];
 
-// PROTECT ADMIN
+// 🔐 AUTH CHECK (FIXED)
 onAuthStateChanged(auth, (user) => {
+
+  if (user === null) return;
+
   if (!user || user.email !== ADMIN_EMAIL) {
     alert("Access Denied!");
-    window.location.href = "index.html";
-  } else {
-    loadOrders();
+    window.location.replace("index.html");
+    return;
   }
-});
 
-// LOAD ORDERS
-async function loadOrders(){
-  const querySnapshot = await getDocs(collection(db, "orders"));
+  // 🔥 REAL-TIME ORDERS
+  onSnapshot(collection(db, "orders"), (snapshot) => {
 
-  allOrders = [];
+    allOrders = [];
 
-  querySnapshot.forEach(docSnap => {
-    allOrders.push({
-      id: docSnap.id,
-      ...docSnap.data()
+    snapshot.forEach(docSnap => {
+      allOrders.push({
+        id: docSnap.id,
+        ...docSnap.data()
+      });
     });
+
+    displayOrders(allOrders);
   });
 
-  displayOrders(allOrders);
-}
+});
 
-// DISPLAY ORDERS
+// DISPLAY
 function displayOrders(list){
   document.getElementById("orders").innerHTML = "";
 
@@ -128,7 +145,7 @@ function displayOrders(list){
   });
 }
 
-// 🔍 SEARCH FUNCTION
+// 🔍 SEARCH
 window.searchOrders = function(){
   const value = document.getElementById("search").value.toLowerCase();
 
@@ -139,15 +156,14 @@ window.searchOrders = function(){
   displayOrders(filtered);
 };
 
-// APPROVE ORDER
+// ✅ APPROVE
 window.approve = async function(id){
   await updateDoc(doc(db, "orders", id), {
     status: "approved",
     account: "user123\npass123"
   });
 
-  alert("Order Approved!");
-  loadOrders();
+  alert("Approved!");
 };
 </script>
 
