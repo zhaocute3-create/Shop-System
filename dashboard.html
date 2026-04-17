@@ -2,11 +2,10 @@
 <html>
 <head>
 <title>Shop</title>
-
 <style>
 body{background:#020617;color:white;font-family:Arial;}
-.container{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px;padding:15px;}
-.card{background:#1e293b;padding:15px;border-radius:15px;}
+.container{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;padding:10px;}
+.card{background:#1e293b;padding:10px;border-radius:10px;}
 img{width:100%;border-radius:10px;}
 button,input{width:100%;padding:10px;margin-top:5px;border:none;border-radius:10px;}
 button{background:#22c55e;}
@@ -16,19 +15,16 @@ pre{background:black;padding:10px;border-radius:10px;}
 
 <body>
 
-<h2 style="text-align:center;">🎮 ZHAO BM SELLER</h2>
-
+<h2 style="text-align:center;">🎮 SHOP</h2>
 <div class="container" id="shop"></div>
 
 <h2 style="text-align:center;">📦 My Orders</h2>
-<div class="container" id="myOrders"></div>
+<div class="container" id="orders"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth,onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {
-getFirestore,collection,onSnapshot,addDoc
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore,collection,onSnapshot,addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig={
 apiKey:"AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
@@ -41,16 +37,9 @@ const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 const auth=getAuth(app);
 
-// FIX LOOP
-onAuthStateChanged(auth,(user)=>{
-if(user===null)return;
-if(!user) location="index.html";
-});
-
-// LOAD PRODUCTS
+// LOAD SHOP
 onSnapshot(collection(db,"accounts"),snap=>{
 shop.innerHTML="";
-
 snap.forEach(docSnap=>{
 let a=docSnap.data();
 
@@ -58,21 +47,19 @@ shop.innerHTML+=`
 <div class="card">
 <img src="${a.image}">
 <h3>${a.product}</h3>
-
 <input type="file" id="proof_${docSnap.id}">
-
 <button onclick="buy('${docSnap.id}','${a.product}')">BUY</button>
 </div>`;
 });
 });
 
-// BUY WITH GCASH PROOF
-window.buy=async(id,product)=>{
+// BUY WITH PROOF
+window.buy=(id,product)=>{
 let file=document.getElementById("proof_"+id).files[0];
-if(!file) return alert("Upload GCash Proof!");
+if(!file) return alert("Upload proof!");
 
 let reader=new FileReader();
-reader.onload=async function(){
+reader.onload=async()=>{
 await addDoc(collection(db,"orders"),{
 email:auth.currentUser.email,
 product:product,
@@ -84,25 +71,16 @@ alert("Order Sent!");
 reader.readAsDataURL(file);
 };
 
-// SHOW MY ORDERS
+// MY ORDERS
 onSnapshot(collection(db,"orders"),snap=>{
-myOrders.innerHTML="";
-
+orders.innerHTML="";
 snap.forEach(d=>{
 let o=d.data();
-
 if(o.email===auth.currentUser.email){
-
-myOrders.innerHTML+=`
+orders.innerHTML+=`
 <div class="card">
-${o.product}<br>
-Status: ${o.status}
-
-${
-o.status==="approved"
-? `<pre>${o.account}</pre>`
-: "Waiting..."
-}
+${o.product}<br>Status:${o.status}
+${o.status==="approved"?`<pre>${o.account}</pre>`:"Waiting"}
 </div>`;
 }
 });
