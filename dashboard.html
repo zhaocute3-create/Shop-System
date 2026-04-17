@@ -1,9 +1,76 @@
 <!DOCTYPE html>
 <html>
-<body style="background:#020617;color:white;text-align:center">
+<head>
+  <title>User Dashboard</title>
+</head>
 
-<h2>USER DASHBOARD</h2>
-<a href="shop.html">GO SHOP</a>
+<body style="background:#020617;color:white;text-align:center;font-family:sans-serif">
+
+<h2>🧾 USER DASHBOARD</h2>
+<a href="shop.html" style="
+color:#00ffcc;
+text-decoration:none;
+display:inline-block;
+margin:10px;
+padding:10px 20px;
+border:1px solid #00ffcc;
+border-radius:10px;
+box-shadow:0 0 10px #00ffcc;
+">GO SHOP</a>
+
+<div id="orders"></div>
+
+<script type="module">
+import { db, auth } from "./firebase.js";
+
+import {
+  collection,
+  query,
+  where,
+  onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const div = document.getElementById("orders");
+
+auth.onAuthStateChanged(user=>{
+  if(!user) return location="index.html";
+
+  const q = query(
+    collection(db,"orders"),
+    where("user","==",user.email)
+  );
+
+  onSnapshot(q,snap=>{
+    let html="";
+
+    snap.forEach(doc=>{
+      let o = doc.data();
+
+      html+=`
+      <div style="
+        border:1px solid #00ffcc;
+        margin:15px;
+        padding:15px;
+        border-radius:12px;
+        box-shadow:0 0 12px #00ffcc;
+        text-align:left;
+      ">
+        <b>Product:</b> ${o.product}<br>
+        <b>Status:</b> ${o.status}<br>
+
+        ${o.status==="approved" ? `
+        <hr>
+        <b>USERNAME:</b> ${o.username}<br>
+        <b>PASSWORD:</b> ${o.password}
+        ` : `<span style="color:orange">Waiting for approval...</span>`}
+      </div>`;
+    });
+
+    div.innerHTML = html || "<p>No orders yet</p>";
+  });
+
+});
+</script>
 
 </body>
 </html>
