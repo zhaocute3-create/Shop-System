@@ -3,10 +3,18 @@
 <head>
 <title>ADMIN</title>
 <style>
-body{background:#020617;color:white}
-button{background:#00ff88;border:none;padding:10px;margin:5px;
-box-shadow:0 0 10px #00ff88;border-radius:10px}
-.card{border:1px solid #00ff88;padding:10px;margin:10px}
+body{background:#020617;color:white;font-family:sans-serif}
+button{
+  background:#00ff88;border:none;padding:10px;margin:5px;
+  box-shadow:0 0 10px #00ff88;border-radius:10px;color:black
+}
+.card{
+  border:1px solid #00ff88;padding:10px;margin:10px;
+  border-radius:10px;box-shadow:0 0 10px #00ff88
+}
+input{
+  margin:5px;padding:8px;border-radius:8px;border:none
+}
 </style>
 </head>
 <body>
@@ -32,25 +40,28 @@ box-shadow:0 0 10px #00ff88;border-radius:10px}
 import { db, auth } from "./firebase.js";
 
 import {
-collection,addDoc,onSnapshot,
-doc,updateDoc,getDoc
+collection, addDoc, onSnapshot,
+doc, updateDoc, getDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import {
-onAuthStateChanged,signOut
+onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const ADMIN="jhonlouiebaid92@gmail.com";
 let allOrders=[];
 
-// SECURITY
+// 🔐 SECURITY
 onAuthStateChanged(auth,u=>{
  if(!u || u.email!==ADMIN) location="index.html";
 });
 
-// ADD STOCK
+// ➕ ADD STOCK
 window.addStock=()=>{
  let file=document.getElementById("img").files[0];
+
+ if(!file) return alert("Select image");
+
  let reader=new FileReader();
 
  reader.onload=async(e)=>{
@@ -61,27 +72,31 @@ window.addStock=()=>{
    image:e.target.result,
    status:"available"
   });
+
   alert("✅ Added!");
  };
 
  reader.readAsDataURL(file);
 };
 
-// STOCK VIEW
+// 📦 STOCK VIEW
 onSnapshot(collection(db,"accounts"),snap=>{
  let html="";
  snap.forEach(docu=>{
   let s=docu.data();
+
   if(s.status==="available"){
    html+=`<div class="card">
-   ${s.product}<br>${s.username}
+   <b>${s.product}</b><br>
+   ${s.username}<br>
+   ID: ${docu.id}
    </div>`;
   }
  });
  stock.innerHTML=html;
 });
 
-// ORDERS
+// 📥 ORDERS
 onSnapshot(collection(db,"orders"),snap=>{
  allOrders=[];
  snap.forEach(d=>{
@@ -90,25 +105,33 @@ onSnapshot(collection(db,"orders"),snap=>{
  renderOrders();
 });
 
+// 🔍 SEARCH + RENDER
 window.renderOrders=()=>{
  let html="";
  let q=search.value.toLowerCase();
 
  allOrders.forEach(o=>{
-  if(o.email.toLowerCase().includes(q)){
+  if((o.user || "").toLowerCase().includes(q)){
    html+=`<div class="card">
-   ${o.email}<br>Status:${o.status}
-   <button onclick="approve('${o.id}','${o.accId}')">Approve</button>
+   <b>${o.user}</b><br>
+   Product: ${o.product}<br>
+   Status: ${o.status}<br>
+
+   ${o.status==="pending" ? `
+   <button onclick="approve('${o.id}','${o.accountId}')">
+   Approve
+   </button>
+   ` : "✔ Done"}
    </div>`;
   }
  });
+
  orders.innerHTML=html;
 };
 
-// APPROVE
+// ✅ APPROVE + AUTO SEND
 window.approve = async (orderId, accId) => {
 
-  // kunin account
   let accSnap = await getDoc(doc(db, "accounts", accId));
   let acc = accSnap.data();
 
@@ -117,7 +140,7 @@ window.approve = async (orderId, accId) => {
     status: "sold"
   });
 
-  // update order + SEND credentials
+  // send credentials
   await updateDoc(doc(db, "orders", orderId), {
     status: "approved",
     username: acc.username,
@@ -130,10 +153,10 @@ window.approve = async (orderId, accId) => {
     date:Date.now()
   });
 
-  alert("Approved + Sent 🔥");
+  alert("🔥 Approved + Sent");
 };
 
-// LOGOUT
+// 🚪 LOGOUT
 window.logout=()=>{
  signOut(auth).then(()=>location="index.html");
 };
