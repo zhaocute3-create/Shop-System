@@ -13,9 +13,9 @@ button{background:#22c55e;color:white;}
 <body>
 
 <div class="box">
-<h2>Login / Register</h2>
+<h2>Zhao BM Seller</h2>
 
-<input id="email" type="email" placeholder="Email">
+<input id="email" placeholder="Email">
 <input id="pass" type="password" placeholder="Password">
 
 <button onclick="register()">Register</button>
@@ -25,14 +25,11 @@ button{background:#22c55e;color:white;}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-getAuth,
-createUserWithEmailAndPassword,
-signInWithEmailAndPassword,
-setPersistence,
-browserLocalPersistence
+getAuth,createUserWithEmailAndPassword,
+signInWithEmailAndPassword,onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const ADMIN_EMAIL="jhonlouiebaid92@gmail.com";
+const ADMIN="jhonlouiebaid92@gmail.com";
 
 const firebaseConfig={
 apiKey:"AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
@@ -44,7 +41,16 @@ appId:"1:396312062190:web:c4ac936bd7f5bc11f0ebff"
 const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);
 
-await setPersistence(auth,browserLocalPersistence);
+// AUTO LOGIN FIX (NO LOOP)
+onAuthStateChanged(auth,user=>{
+if(user){
+if(user.email===ADMIN){
+location="admin.html";
+}else{
+location="dashboard.html";
+}
+}
+});
 
 window.register=async()=>{
 await createUserWithEmailAndPassword(auth,email.value,pass.value);
@@ -53,12 +59,6 @@ alert("Registered!");
 
 window.login=async()=>{
 await signInWithEmailAndPassword(auth,email.value,pass.value);
-
-if(email.value===ADMIN_EMAIL){
-location="admin.html";
-}else{
-location="dashboard.html";
-}
 };
 </script>
 
