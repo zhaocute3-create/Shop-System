@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<body style="background:#020617;color:white;text-align:center">
+
+<h2>DASHBOARD</h2>
+<a href="shop.html">SHOP</a>
+
+<div id="orders"></div>
+
+<script type="module">
+import { db, auth } from "./firebase.js";
+import { collection,query,where,onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+auth.onAuthStateChanged(user=>{
+ if(!user) location="index.html";
+
+ const q=query(collection(db,"orders"),where("user","==",user.email));
+
+ onSnapshot(q,snap=>{
+  let html="";
+  snap.forEach(d=>{
+   let o=d.data();
+
+   html+=`
+   <div>
+   ${o.product}<br>
+   ${o.status}<br>
+
+   ${o.status==="approved"?`
+   USER:${o.username}<br>
+   PASS:${o.password}
+   `:"Waiting..."}
+   </div><hr>`;
+  });
+
+  orders.innerHTML=html;
+ });
+});
+</script>
+
+</body>
+</html>

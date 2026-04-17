@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<body style="background:#020617;color:white;text-align:center">
+
+<h2>REGISTER</h2>
+
+<input id="email"><br>
+<input id="pass" type="password"><br>
+
+<button onclick="reg()">CREATE</button>
+
+<script type="module">
+import { auth } from "./firebase.js";
+import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+window.reg=()=>{
+ createUserWithEmailAndPassword(auth,email.value,pass.value)
+ .then(()=>location="index.html");
+}
+</script>
+
+</body>
+</html>

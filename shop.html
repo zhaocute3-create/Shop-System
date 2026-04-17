@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<body style="background:#020617;color:white">
+
+<h2>SHOP</h2>
+<div id="shop"></div>
+
+<script type="module">
+import { db, auth } from "./firebase.js";
+import { collection,onSnapshot,addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+onSnapshot(collection(db,"accounts"),snap=>{
+ let html="";
+ snap.forEach(d=>{
+  let s=d.data();
+
+  if(s.status==="available"){
+   html+=`
+   <div>
+   ${s.product}<br>
+   ₱${s.price}<br>
+   <button onclick="buy('${d.id}','${s.product}')">BUY</button>
+   </div><hr>`;
+  }
+ });
+
+ shop.innerHTML=html;
+});
+
+window.buy=async(id,product)=>{
+ await addDoc(collection(db,"orders"),{
+  user:auth.currentUser.email,
+  product:product,
+  accountId:id,
+  status:"pending"
+ });
+
+ alert("Order sent");
+};
+</script>
+
+</body>
+</html>

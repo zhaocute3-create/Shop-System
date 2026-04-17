@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<body style="background:#020617;color:white">
+
+<h2>ADMIN</h2>
+
+<input id="product"><br>
+<input id="user"><br>
+<input id="pass"><br>
+<input id="price"><br>
+
+<button onclick="addStock()">ADD</button>
+
+<h3>STOCK</h3>
+<div id="stock"></div>
+
+<h3>ORDERS</h3>
+<div id="orders"></div>
+
+<script type="module">
+import { db, auth } from "./firebase.js";
+
+import {
+collection,addDoc,onSnapshot,
+doc,updateDoc,getDoc,deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const ADMIN="jhonlouiebaid92@gmail.com";
+
+onAuthStateChanged(auth,user=>{
+ if(!user || user.email!==ADMIN){
+  location="index.html";
+ }
+});
+
+// ADD STOCK
+window.addStock=async()=>{
+ await addDoc(collection(db,"accounts"),{
+  product:product.value,
+  username:user.value,
+  password:pass.value,
+  price:price.value,
+  status:"available"
+ });
+};
+
+// STOCK
+onSnapshot(collection(db,"accounts"),snap=>{
+ let html="";
+ snap.forEach(d=>{
+  let s=d.data();
+
+  html+=`
+  <div>
+  ${s.product} ₱${s.price}
+  <button onclick="del('${d.id}')">Delete</button>
+  </div>`;
+ });
+
+ stock.innerHTML=html;
+});
+
+window.del=async(id)=>{
+ await deleteDoc(doc(db,"accounts",id));
+};
+
+// ORDERS
+onSnapshot(collection(db,"orders"),snap=>{
+ let html="";
+ snap.forEach(d=>{
+  let o=d.data();
+
+  html+=`
+  <div>
+  ${o.user}<br>${o.product}<br>${o.status}
+  <button onclick="approve('${d.id}','${o.accountId}')">Approve</button>
+  <button onclick="reject('${d.id}')">Reject</button>
+  </div><hr>`;
+ });
+
+ orders.innerHTML=html;
+});
+
+window.approve=async(id,accId)=>{
+ let acc=await getDoc(doc(db,"accounts",accId));
+ let data=acc.data();
+
+ await updateDoc(doc(db,"orders",id),{
+  status:"approved",
+  username:data.username,
+  password:data.password
+ });
+
+ await updateDoc(doc(db,"accounts",accId),{
+  status:"sold"
+ });
+};
+
+window.reject=async(id)=>{
+ await deleteDoc(doc(db,"orders",id));
+};
+</script>
+
+</body>
+</html>
