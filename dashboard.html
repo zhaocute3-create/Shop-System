@@ -102,8 +102,10 @@ button {
   <h3 id="userEmail"></h3>
 </div>
 
+<!-- 🔥 BUY SECTION (UPDATED) -->
 <div class="card">
   <input id="ref" placeholder="GCash Ref">
+  <input type="file" id="proof"> <!-- ✅ ADD THIS -->
   <button onclick="buy()">Buy</button>
 </div>
 
@@ -112,7 +114,6 @@ button {
   <div id="orders"></div>
 </div>
 
-<!-- 🔥 LOGOUT BUTTON -->
 <div class="card">
   <button class="logout" onclick="logout()">Logout</button>
 </div>
@@ -139,6 +140,13 @@ import {
   onSnapshot 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
 // CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
@@ -150,14 +158,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
-// 🔥 SAVE LOGIN SESSION
+// SAVE LOGIN
 await setPersistence(auth, browserLocalPersistence);
 
-// ⏱️ Anti-spam
 let lastBuyTime = 0;
 
-// 🔐 AUTH CHECK (FIXED)
+// AUTH
 onAuthStateChanged(auth, (user) => {
 
   if (user === null) return;
@@ -172,7 +180,7 @@ onAuthStateChanged(auth, (user) => {
 
   document.getElementById("userEmail").innerText = user.email;
 
-  // 🔥 REAL-TIME ORDERS
+  // REALTIME ORDERS
   onSnapshot(collection(db, "orders"), (snapshot) => {
     document.getElementById("orders").innerHTML = "";
 
@@ -184,6 +192,7 @@ onAuthStateChanged(auth, (user) => {
           <div class="order">
             <p>${o.item} - ₱${o.price}</p>
             <p>Status: ${o.status}</p>
+            ${o.proof ? `<img src="${o.proof}" width="100%">` : ""} <!-- ✅ SHOW IMAGE -->
             ${o.status === "approved" ? `<p>✅ ${o.account}</p>` : ""}
           </div>
         `;
@@ -193,7 +202,7 @@ onAuthStateChanged(auth, (user) => {
 
 });
 
-// 🛒 BUY
+// 🛒 BUY WITH REAL UPLOAD
 window.buy = async function(){
   const now = Date.now();
 
@@ -204,26 +213,35 @@ window.buy = async function(){
 
   let user = auth.currentUser;
   let ref = document.getElementById("ref").value;
+  let file = document.getElementById("proof").files[0];
 
-  if(!ref){
-    alert("Enter GCash Ref!");
-    return;
+  if(!ref) return alert("Enter GCash Ref!");
+  if(!file) return alert("Upload proof!");
+
+  try {
+    const fileRef = storageRef(storage, "proofs/" + Date.now() + "_" + file.name);
+    await uploadBytes(fileRef, file);
+
+    const url = await getDownloadURL(fileRef);
+
+    await addDoc(collection(db, "orders"), {
+      email: user.email,
+      item: "Premium",
+      price: 50,
+      reference: ref,
+      proof: url, // ✅ REAL IMAGE LINK
+      status: "pending"
+    });
+
+    lastBuyTime = now;
+
+    alert("Order sent with proof!");
+  } catch(err){
+    alert(err.message);
   }
-
-  await addDoc(collection(db, "orders"), {
-    email: user.email,
-    item: "Premium",
-    price: 50,
-    reference: ref,
-    status: "pending"
-  });
-
-  lastBuyTime = now;
-
-  alert("Order sent!");
 };
 
-// 🔥 LOGOUT FUNCTION
+// LOGOUT
 window.logout = function(){
   signOut(auth).then(() => {
     window.location.replace("index.html");
