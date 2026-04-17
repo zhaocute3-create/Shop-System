@@ -34,18 +34,28 @@ if(!user) return location="index.html";
 
 onSnapshot(collection(db,"accounts"),snap=>{
 shop.innerHTML="";
-snap.forEach(d=>{
-let a=d.data();
+
+snap.forEach(docSnap=>{
+let a=docSnap.data();
+let id=docSnap.id;
+
+console.log(a); // 👈 debug
+
+if(!a.image) return;
+
 if((a.status || "").trim().toLowerCase() !== "available") return;
 
 shop.innerHTML+=`
 <div class="card">
 <img src="${a.image}">
 <h3>${a.product}</h3>
-<input id="ref_${d.id}" placeholder="GCash Ref">
-<button onclick="buy('${d.id}')">Buy</button>
-</div>`;
-});
+<p>${a.username}</p>
+
+<input id="ref_${id}" placeholder="GCash Ref">
+
+<button onclick="buy('${id}')">BUY</button>
+</div>
+`;
 });
 });
 
