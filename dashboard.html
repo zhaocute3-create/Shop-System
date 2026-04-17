@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Pro Dashboard</title>
+<title>Shop Dashboard</title>
 
 <style>
 body {
@@ -11,70 +11,63 @@ body {
   color:white;
 }
 
-/* LOADING */
-#loading {
-  position:fixed;
-  width:100%;
-  height:100%;
-  background:#020617;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  flex-direction:column;
-  z-index:999;
-}
-
-.loader {
-  border:5px solid #1e293b;
-  border-top:5px solid #22c55e;
-  border-radius:50%;
-  width:50px;
-  height:50px;
-  animation:spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform:rotate(0deg); }
-  100% { transform:rotate(360deg); }
-}
-
+/* HEADER */
 .header {
   padding:15px;
   text-align:center;
   background:#020617;
   font-weight:bold;
+  font-size:20px;
 }
 
-.container { padding:20px; }
+/* GRID SHOP */
+.container {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:15px;
+  padding:15px;
+}
 
+/* CARD */
 .card {
   background:#1e293b;
-  padding:20px;
+  padding:15px;
   border-radius:15px;
-  margin-bottom:15px;
+  position:relative;
 }
 
-button, input {
+.card img {
+  width:100%;
+  border-radius:10px;
+}
+
+.sold {
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:red;
+  padding:5px 10px;
+  border-radius:10px;
+  font-size:12px;
+}
+
+/* BUTTON */
+button {
   width:100%;
   padding:10px;
-  margin:5px 0;
-  border-radius:10px;
+  margin-top:5px;
   border:none;
-}
-
-button {
+  border-radius:10px;
   background:#22c55e;
   color:white;
 }
 
-.logout {
-  background:red;
-}
-
-.order {
-  background:#334155;
+/* INPUT */
+input {
+  width:100%;
   padding:10px;
-  margin:5px;
+  margin-top:5px;
+  border:none;
   border-radius:10px;
 }
 </style>
@@ -83,169 +76,109 @@ button {
 
 <body>
 
-<!-- LOADING -->
-<div id="loading">
-  <div class="loader"></div>
-  <p>Loading your account...</p>
-</div>
-
-<!-- MAIN -->
-<div id="main" style="display:none;">
-
 <div class="header">
-  🎮 Dashboard
+🎮 Game Account Shop
 </div>
 
-<div class="container">
-
-<div class="card">
-  <h3 id="userEmail"></h3>
-</div>
-
-<!-- 🔥 BUY SECTION (UPDATED) -->
-<div class="card">
-  <input id="ref" placeholder="GCash Ref">
-  <input type="file" id="proof"> <!-- ✅ ADD THIS -->
-  <button onclick="buy()">Buy</button>
-</div>
-
-<div class="card">
-  <h3>My Orders (LIVE)</h3>
-  <div id="orders"></div>
-</div>
-
-<div class="card">
-  <button class="logout" onclick="logout()">Logout</button>
-</div>
-
-</div>
-
-</div>
+<div class="container" id="shop"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
-import { 
-  getAuth, 
-  onAuthStateChanged, 
-  signOut,
-  setPersistence, 
-  browserLocalPersistence 
+import {
+  getAuth,
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  onSnapshot 
+import {
+  getFirestore,
+  collection,
+  onSnapshot,
+  addDoc,
+  doc,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-import {
-  getStorage,
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-
-// CONFIG
 const firebaseConfig = {
-  apiKey: "AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
-  authDomain: "accountshop-a94e8.firebaseapp.com",
-  projectId: "accountshop-a94e8",
-  appId: "1:396312062190:web:c4ac936bd7f5bc11f0ebff"
+  apiKey: "AIza...",
+  authDomain: "...",
+  projectId: "...",
+  appId: "..."
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
-// SAVE LOGIN
-await setPersistence(auth, browserLocalPersistence);
-
-let lastBuyTime = 0;
-
-// AUTH
+// 🔐 CHECK LOGIN
 onAuthStateChanged(auth, (user) => {
-
-  if (user === null) return;
-
   if (!user) {
     window.location.replace("index.html");
-    return;
   }
-
-  document.getElementById("loading").style.display = "none";
-  document.getElementById("main").style.display = "block";
-
-  document.getElementById("userEmail").innerText = user.email;
-
-  // REALTIME ORDERS
-  onSnapshot(collection(db, "orders"), (snapshot) => {
-    document.getElementById("orders").innerHTML = "";
-
-    snapshot.forEach(doc => {
-      let o = doc.data();
-
-      if (o.email === user.email) {
-        document.getElementById("orders").innerHTML += `
-          <div class="order">
-            <p>${o.item} - ₱${o.price}</p>
-            <p>Status: ${o.status}</p>
-            ${o.proof ? `<img src="${o.proof}" width="100%">` : ""} <!-- ✅ SHOW IMAGE -->
-            ${o.status === "approved" ? `<p>✅ ${o.account}</p>` : ""}
-          </div>
-        `;
-      }
-    });
-  });
-
 });
 
-// 🛒 BUY WITH REAL UPLOAD
-window.buy = async function(){
+// ⏱️ Anti spam
+let lastBuy = 0;
+
+// 🔥 LOAD ACCOUNTS (REAL-TIME)
+onSnapshot(collection(db,"accounts"), snap => {
+
+  let html = "";
+
+  snap.forEach(docSnap => {
+    let a = docSnap.data();
+    let id = docSnap.id;
+
+    html += `
+    <div class="card">
+      ${a.status === "sold" ? `<div class="sold">SOLD</div>` : ""}
+
+      <img src="${a.image || ''}">
+      <h3>${a.product}</h3>
+      <p>Account #${id.slice(0,5)}</p>
+
+      <input id="ref_${id}" placeholder="GCash Ref">
+
+      ${
+        a.status === "available"
+        ? `<button onclick="buy('${id}')">Buy</button>`
+        : `<button disabled>SOLD</button>`
+      }
+    </div>`;
+  });
+
+  document.getElementById("shop").innerHTML = html;
+});
+
+// 🛒 BUY EXACT ACCOUNT
+window.buy = async function(id){
+
   const now = Date.now();
 
-  if(now - lastBuyTime < 10000){
+  if(now - lastBuy < 10000){
     alert("Wait 10 seconds!");
     return;
   }
 
   let user = auth.currentUser;
-  let ref = document.getElementById("ref").value;
-  let file = document.getElementById("proof").files[0];
+  let ref = document.getElementById("ref_"+id).value;
 
   if(!ref) return alert("Enter GCash Ref!");
-  if(!file) return alert("Upload proof!");
 
-  try {
-    const fileRef = storageRef(storage, "proofs/" + Date.now() + "_" + file.name);
-    await uploadBytes(fileRef, file);
-
-    const url = await getDownloadURL(fileRef);
-
-    await addDoc(collection(db, "orders"), {
-      email: user.email,
-      item: "Premium",
-      price: 50,
-      reference: ref,
-      proof: url, // ✅ REAL IMAGE LINK
-      status: "pending"
-    });
-
-    lastBuyTime = now;
-
-    alert("Order sent with proof!");
-  } catch(err){
-    alert(err.message);
-  }
-};
-
-// LOGOUT
-window.logout = function(){
-  signOut(auth).then(() => {
-    window.location.replace("index.html");
+  await addDoc(collection(db,"orders"),{
+    email:user.email,
+    accountId:id,
+    status:"pending"
   });
+
+  // 🔒 LOCK ACCOUNT
+  await updateDoc(doc(db,"accounts",id),{
+    status:"reserved"
+  });
+
+  lastBuy = now;
+
+  alert("Order placed!");
 };
 </script>
 
