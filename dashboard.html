@@ -7,6 +7,7 @@
 <body style="background:#020617;color:white;text-align:center;font-family:sans-serif">
 
 <h2>🧾 USER DASHBOARD</h2>
+
 <a href="shop.html" style="
 color:#00ffcc;
 text-decoration:none;
@@ -27,17 +28,38 @@ import {
   collection,
   query,
   where,
-  onSnapshot
+  onSnapshot,
+  doc,
+  setDoc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import {
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const div = document.getElementById("orders");
 
-auth.onAuthStateChanged(user=>{
+// 🔥 MAIN AUTH + ONLINE TRACKER
+onAuthStateChanged(auth, async user=>{
   if(!user) return location="index.html";
 
+  // 👥 ONLINE TRACKER
+  const ref = doc(db,"presence",user.uid);
+
+  await setDoc(ref,{
+    email:user.email,
+    online:true
+  });
+
+  window.addEventListener("beforeunload",()=>{
+    deleteDoc(ref);
+  });
+
+  // 📦 LOAD ORDERS
   const q = query(
     collection(db,"orders"),
-    where("user","==",user.email)
+    where("email","==",user.email) // 🔥 FIX (email not "user")
   );
 
   onSnapshot(q,snap=>{
@@ -55,7 +77,7 @@ auth.onAuthStateChanged(user=>{
         box-shadow:0 0 12px #00ffcc;
         text-align:left;
       ">
-        <b>Product:</b> ${o.product}<br>
+        <b>Product:</b> ${o.product || "N/A"}<br>
         <b>Status:</b> ${o.status}<br>
 
         ${o.status==="approved" ? `
