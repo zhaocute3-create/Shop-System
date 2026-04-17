@@ -36,7 +36,7 @@ onSnapshot(collection(db,"accounts"),snap=>{
 shop.innerHTML="";
 snap.forEach(d=>{
 let a=d.data();
-if(a.status!="available") return;
+if((a.status || "").trim().toLowerCase() !== "available") return;
 
 shop.innerHTML+=`
 <div class="card">
