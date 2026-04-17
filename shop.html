@@ -14,39 +14,22 @@ button{background:#00ff88;border:none;padding:10px}
 
 <script type="module">
 import { db, auth } from "./firebase.js";
-
 import {
-collection,onSnapshot,addDoc
+  collection, addDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-onSnapshot(collection(db,"accounts"),snap=>{
- let html="";
- snap.forEach(docu=>{
-  let s=docu.data();
+window.buy = async (id, product) => {
+  if (!auth.currentUser) return alert("Login muna");
 
-  if(s.status==="available"){
-   html+=`
-   <div class="card">
-   ${s.product}<br>
-   ${s.username}<br>
-   <img src="${s.image}" width="100%">
-   <button onclick="buy('${docu.id}')">BUY</button>
-   </div>`;
-  }
- });
- stock.innerHTML=html;
-});
+  await addDoc(collection(db, "orders"), {
+    user: auth.currentUser.email,
+    accountId: id,
+    product: product,
+    status: "pending",
+    created: Date.now()
+  });
 
-window.buy=async(id)=>{
- let user=auth.currentUser;
-
- await addDoc(collection(db,"orders"),{
-  email:user.email,
-  accId:id,
-  status:"pending"
- });
-
- alert("📥 Order Sent");
+  alert("Order sent 🔥");
 };
 </script>
 
