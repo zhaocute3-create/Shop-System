@@ -17,18 +17,26 @@ doc,setDoc,deleteDoc
 
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+// ✅ AUTH + ONLINE TRACKER (ONLY ONE)
 onAuthStateChanged(auth,async user=>{
- if(!user) location="index.html";
+ if(!user) return location="index.html";
 
  let ref=doc(db,"presence",user.uid);
 
- await setDoc(ref,{email:user.email});
+ await setDoc(ref,{
+  email:user.email,
+  online:true
+ });
 
  window.addEventListener("beforeunload",()=>{
   deleteDoc(ref);
  });
 
- const q=query(collection(db,"orders"),where("email","==",user.email));
+ // ✅ LOAD USER ORDERS
+ const q=query(
+  collection(db,"orders"),
+  where("email","==",user.email)
+ );
 
  onSnapshot(q,snap=>{
   let html="";
@@ -53,28 +61,9 @@ onAuthStateChanged(auth,async user=>{
    </div>`;
   });
 
-  orders.innerHTML=html;
-import {
- doc, setDoc, deleteDoc
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  orders.innerHTML=html || "<p>No orders yet</p>";
+ });
 
-import {
- onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
-onAuthStateChanged(auth, async user=>{
- if(user){
-  let ref = doc(db,"presence",user.uid);
-
-  await setDoc(ref,{
-   email:user.email,
-   online:true
-  });
-
-  window.addEventListener("beforeunload",()=>{
-   deleteDoc(ref);
-  });
- }
 });
 </script>
 
