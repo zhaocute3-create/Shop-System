@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Register</title>
+
+<style>
+body{
+background:#020617;
+color:white;
+text-align:center;
+font-family:sans-serif;
+}
+
+input{
+display:block;
+margin:10px auto;
+padding:10px;
+width:200px;
+border:none;
+border-radius:10px;
+}
+
+button{
+background:#00ff88;
+padding:10px 20px;
+border:none;
+border-radius:10px;
+box-shadow:0 0 10px #00ff88;
+}
+</style>
+</head>
+
+<body>
+
+<h2>📝 REGISTER</h2>
+
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+
+<button onclick="register()">REGISTER</button>
+
+<p>
+Already have account? 
+<a href="index.html" style="color:#00ffcc">Login</a>
+</p>
+
+<script type="module">
+import { auth } from "./firebase.js";
+
+import {
+createUserWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+window.register = async () => {
+ try{
+  await createUserWithEmailAndPassword(
+   auth,
+   email.value,
+   password.value
+  );
+
+  alert("Registered ✅");
+  location = "index.html";
+
+ }catch(e){
+  alert(e.message);
+ }
+};
+</script>
+
+</body>
+</html>
