@@ -1,13 +1,18 @@
 <!DOCTYPE html>
 <html>
-<body style="background:#020617;color:white">
+<body style="background:#020617;color:white;font-family:sans-serif">
 
 <h2>ADMIN</h2>
 
-<input id="product"><br>
-<input id="user"><br>
-<input id="pass"><br>
-<input id="price"><br>
+<h3>💰 Earnings: ₱<span id="earnings">0</span></h3>
+
+<h3>👥 Online Users</h3>
+<div id="users"></div>
+
+<input id="product" placeholder="Product"><br>
+<input id="user" placeholder="Username"><br>
+<input id="pass" placeholder="Password"><br>
+<input id="price" placeholder="Price"><br>
 
 <button onclick="addStock()">ADD</button>
 
@@ -29,6 +34,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/f
 
 const ADMIN="jhonlouiebaid92@gmail.com";
 
+// SECURITY
 onAuthStateChanged(auth,user=>{
  if(!user || user.email!==ADMIN){
   location="index.html";
@@ -51,17 +57,16 @@ onSnapshot(collection(db,"accounts"),snap=>{
  let html="";
  snap.forEach(d=>{
   let s=d.data();
-
   html+=`
   <div>
   ${s.product} ₱${s.price}
   <button onclick="del('${d.id}')">Delete</button>
   </div>`;
  });
-
  stock.innerHTML=html;
 });
 
+// DELETE
 window.del=async(id)=>{
  await deleteDoc(doc(db,"accounts",id));
 };
@@ -69,8 +74,14 @@ window.del=async(id)=>{
 // ORDERS
 onSnapshot(collection(db,"orders"),snap=>{
  let html="";
+ let total=0;
+
  snap.forEach(d=>{
   let o=d.data();
+
+  if(o.status==="approved"){
+   total+=Number(o.price||0);
+  }
 
   html+=`
   <div>
@@ -80,9 +91,11 @@ onSnapshot(collection(db,"orders"),snap=>{
   </div><hr>`;
  });
 
+ earnings.innerText=total;
  orders.innerHTML=html;
 });
 
+// APPROVE
 window.approve=async(id,accId)=>{
  let acc=await getDoc(doc(db,"accounts",accId));
  let data=acc.data();
@@ -98,9 +111,19 @@ window.approve=async(id,accId)=>{
  });
 };
 
+// REJECT
 window.reject=async(id)=>{
  await deleteDoc(doc(db,"orders",id));
 };
+
+// ONLINE USERS
+onSnapshot(collection(db,"presence"),snap=>{
+ let html="";
+ snap.forEach(d=>{
+  html+=`<div>${d.data().email}</div>`;
+ });
+ users.innerHTML=html;
+});
 </script>
 
 </body>
