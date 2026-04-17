@@ -64,35 +64,47 @@ window.addStock = async () => {
     return alert("Fill all + image!");
   }
 
-  // ✅ LIMIT SIZE (FIX ERROR)
-  if(file.size > 300000){
-    return alert("Image too large! Max 300KB");
-  }
-
   let reader = new FileReader();
 
-  reader.onload = async function(e){
+  reader.onload = function(e){
 
-    try{
+    let img = new Image();
+    img.src = e.target.result;
 
-      await addDoc(collection(db, "accounts"), {
-        product: product,
-        username: username,
-        password: password,
-        image: e.target.result, // ✅ SAFE BASE64
-        status: "available"
-      });
+    img.onload = async function(){
 
-      alert("✅ Stock Added!");
+      // 🔥 COMPRESS IMAGE
+      let canvas = document.createElement("canvas");
+      let ctx = canvas.getContext("2d");
 
-      // CLEAR INPUTS
-      document.getElementById("user").value = "";
-      document.getElementById("pass").value = "";
-      document.getElementById("img").value = "";
+      let scale = 0.5; // bawas size
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
 
-    }catch(err){
-      alert("Upload error: " + err.message);
-    }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      let compressed = canvas.toDataURL("image/jpeg", 0.6);
+
+      try{
+        await addDoc(collection(db,"accounts"),{
+          product:product,
+          username:username,
+          password:password,
+          image:compressed,
+          status:"available"
+        });
+
+        alert("✅ Stock Added!");
+
+        user.value="";
+        pass.value="";
+        img.value="";
+
+      }catch(err){
+        alert("Upload error: " + err.message);
+      }
+
+    };
 
   };
 
