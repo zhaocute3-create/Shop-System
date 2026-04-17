@@ -11,7 +11,7 @@ body {
   color:white;
 }
 
-/* 🔥 LOADING SCREEN */
+/* LOADING */
 #loading {
   position:fixed;
   width:100%;
@@ -38,7 +38,6 @@ body {
   100% { transform:rotate(360deg); }
 }
 
-/* MAIN UI */
 .header {
   padding:15px;
   text-align:center;
@@ -79,7 +78,7 @@ button {
 
 <body>
 
-<!-- 🔥 LOADING -->
+<!-- LOADING -->
 <div id="loading">
   <div class="loader"></div>
   <p>Loading your account...</p>
@@ -114,9 +113,19 @@ button {
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, addDoc, onSnapshot } 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { 
+  getAuth, 
+  onAuthStateChanged, 
+  setPersistence, 
+  browserLocalPersistence 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  onSnapshot 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // CONFIG
 const firebaseConfig = {
@@ -130,18 +139,25 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// 🔥 SAVE LOGIN SESSION
+await setPersistence(auth, browserLocalPersistence);
+
 // ⏱️ Anti-spam
 let lastBuyTime = 0;
 
-// AUTH CHECK
+// 🔐 AUTH CHECK (FIXED)
 onAuthStateChanged(auth, (user) => {
 
+  // ⚠️ wag muna redirect habang naglo-load
+  if (user === null) return;
+
+  // ❌ not logged in
   if (!user) {
-    window.location.href = "index.html";
+    window.location.replace("index.html");
     return;
   }
 
-  // ✅ SHOW MAIN UI
+  // ✅ show UI
   document.getElementById("loading").style.display = "none";
   document.getElementById("main").style.display = "block";
 
@@ -168,7 +184,7 @@ onAuthStateChanged(auth, (user) => {
 
 });
 
-// BUY
+// 🛒 BUY
 window.buy = async function(){
   const now = Date.now();
 
