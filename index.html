@@ -28,10 +28,19 @@ const firebaseConfig = { apiKey:"AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA", authD
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const ADMIN = "jhonlouiebaid92@gmail.com";
 
 window.login=()=>{
 signInWithEmailAndPassword(auth,email.value,pass.value)
-.then(()=>location="shop.html")
+.then((cred)=>{
+  let user = cred.user;
+
+  if(user.email === ADMIN){
+    location="admin.html"; // 👑 ADMIN
+  }else{
+    location="shop.html"; // 👤 USER
+  }
+})
 .catch(e=>alert(e.message));
 };
 
