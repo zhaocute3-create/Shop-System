@@ -2,28 +2,93 @@
 <html>
 <head>
 <style>
-body{background:#020617;color:white}
-.card{border:1px solid #00ff88;padding:10px;margin:10px}
-button{background:#00ff88;border:none;padding:10px}
+body{background:#020617;color:white;font-family:sans-serif}
+.card{
+  border:1px solid #00ff88;
+  padding:10px;
+  margin:10px;
+  border-radius:10px;
+  box-shadow:0 0 10px #00ff88;
+}
+button{
+  background:#00ff88;
+  border:none;
+  padding:10px;
+  border-radius:8px;
+  box-shadow:0 0 8px #00ff88;
+}
 </style>
 </head>
+
 <body>
 
-<h2>🛒 SHOP</h2>
+<h2 style="text-align:center;">🛒 SHOP</h2>
+
 <div id="stock"></div>
 
 <script type="module">
 import { db, auth } from "./firebase.js";
+
 import {
-  collection, addDoc
+  collection,
+  addDoc,
+  onSnapshot,
+  doc,
+  setDoc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+import {
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const stockDiv = document.getElementById("stock");
+
+// 👥 ONLINE TRACKER + AUTH CHECK
+onAuthStateChanged(auth, async user=>{
+  if(!user) return location="index.html";
+
+  const ref = doc(db,"presence",user.uid);
+
+  await setDoc(ref,{
+    email:user.email,
+    online:true
+  });
+
+  window.addEventListener("beforeunload",()=>{
+    deleteDoc(ref);
+  });
+});
+
+// 📦 LOAD STOCK REALTIME
+onSnapshot(collection(db,"accounts"), snap=>{
+  let html="";
+
+  snap.forEach(docSnap=>{
+    let s = docSnap.data();
+
+    if(s.status === "available"){
+      html+=`
+      <div class="card">
+        <b>${s.product}</b><br><br>
+        ${s.image ? `<img src="${s.image}" width="100%">` : ""}<br><br>
+        <button onclick="buy('${docSnap.id}','${s.product}')">BUY</button>
+      </div>`;
+    }
+  });
+
+  stockDiv.innerHTML = html || "<p>No available stock</p>";
+});
+
+// 🛒 BUY FUNCTION
 window.buy = async (id, product) => {
-  if (!auth.currentUser) return alert("Login muna");
+  let user = auth.currentUser;
+
+  if (!user) return alert("Login muna");
 
   await addDoc(collection(db, "orders"), {
-    user: auth.currentUser.email,
-    accountId: id,
+    email: user.email, // 🔥 FIX (use email)
+    accId: id,
     product: product,
     status: "pending",
     created: Date.now()
