@@ -53,22 +53,50 @@ loadStock();
 loadOrders();
 });
 
-window.addStock=async()=>{
-let file=img.files[0];
-if(!file) return alert("Add image");
+window.addStock = async () => {
 
-let reader=new FileReader();
-reader.onload=async()=>{
-await addDoc(collection(db,"accounts"),{
-product:product.value,
-username:user.value,
-password:pass.value,
-image:reader.result,
-status:"available"
-});
-alert("Added!");
-};
-reader.readAsDataURL(file);
+  let file = document.getElementById("img").files[0];
+  let username = document.getElementById("user").value;
+  let password = document.getElementById("pass").value;
+  let product = document.getElementById("product").value;
+
+  if(!file || !username || !password){
+    return alert("Fill all + image!");
+  }
+
+  // ✅ LIMIT SIZE (FIX ERROR)
+  if(file.size > 300000){
+    return alert("Image too large! Max 300KB");
+  }
+
+  let reader = new FileReader();
+
+  reader.onload = async function(e){
+
+    try{
+
+      await addDoc(collection(db, "accounts"), {
+        product: product,
+        username: username,
+        password: password,
+        image: e.target.result, // ✅ SAFE BASE64
+        status: "available"
+      });
+
+      alert("✅ Stock Added!");
+
+      // CLEAR INPUTS
+      document.getElementById("user").value = "";
+      document.getElementById("pass").value = "";
+      document.getElementById("img").value = "";
+
+    }catch(err){
+      alert("Upload error: " + err.message);
+    }
+
+  };
+
+  reader.readAsDataURL(file);
 };
 
 function loadStock(){
