@@ -106,18 +106,31 @@ window.renderOrders=()=>{
 };
 
 // APPROVE
-window.approve=async(orderId,accId)=>{
- await updateDoc(doc(db,"accounts",accId),{status:"sold"});
+window.approve = async (orderId, accId) => {
 
- let acc=await getDoc(doc(db,"accounts",accId));
+  // kunin account
+  let accSnap = await getDoc(doc(db, "accounts", accId));
+  let acc = accSnap.data();
 
- await updateDoc(doc(db,"orders",orderId),{
-  status:"approved",
-  username:acc.data().username,
-  password:acc.data().password
- });
+  // mark sold
+  await updateDoc(doc(db, "accounts", accId), {
+    status: "sold"
+  });
 
- alert("✅ Approved & Sent");
+  // update order + SEND credentials
+  await updateDoc(doc(db, "orders", orderId), {
+    status: "approved",
+    username: acc.username,
+    password: acc.password
+  });
+
+  // earnings
+  await addDoc(collection(db,"earnings"),{
+    amount:100,
+    date:Date.now()
+  });
+
+  alert("Approved + Sent 🔥");
 };
 
 // LOGOUT
