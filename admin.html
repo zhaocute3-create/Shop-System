@@ -40,6 +40,11 @@ input, select {
   width:80%;
   margin:5px;
 }
+
+img {
+  border-radius:10px;
+  margin-top:10px;
+}
 </style>
 
 </head>
@@ -56,7 +61,7 @@ input, select {
 
 <!-- 📦 ADD STOCK -->
 <div class="box">
-  <h3>Add Stock</h3>
+  <h3>Add Stock (With Image)</h3>
 
   <select id="product">
     <option value="CODM">CODM</option>
@@ -66,6 +71,7 @@ input, select {
 
   <input id="stockUser" placeholder="Username">
   <input id="stockPass" placeholder="Password">
+  <input type="file" id="stockImg">
 
   <button onclick="addStock()">Add Stock</button>
   <p id="stockCount">Stock: Loading...</p>
@@ -106,6 +112,13 @@ import {
   limit
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
 const firebaseConfig = {
   apiKey: "AIza...",
   authDomain: "...",
@@ -116,6 +129,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 await setPersistence(auth, browserLocalPersistence);
 
@@ -157,29 +171,35 @@ onAuthStateChanged(auth, (user) => {
   });
 });
 
-// ADD STOCK
+// 🔥 ADD STOCK WITH IMAGE
 window.addStock = async function(){
   let user = stockUser.value;
   let pass = stockPass.value;
   let product = document.getElementById("product").value;
+  let file = document.getElementById("stockImg").files[0];
 
-  if(!user || !pass) return alert("Fill all!");
+  if(!user || !pass || !file) return alert("Fill all!");
+
+  const imgRef = ref(storage, "accounts/" + Date.now());
+  await uploadBytes(imgRef, file);
+  const imgURL = await getDownloadURL(imgRef);
 
   await addDoc(collection(db, "accounts"), {
     username:user,
     password:pass,
     product:product,
+    image:imgURL,
     status:"available"
   });
 
   stockUser.value="";
   stockPass.value="";
+  stockImg.value="";
 
-  loadStock();
   loadStockCount();
 };
 
-// LOAD STOCK LIST
+// LOAD STOCK LIST (WITH IMAGE)
 function loadStock(){
   onSnapshot(collection(db,"accounts"), snap=>{
     let html="";
@@ -188,9 +208,11 @@ function loadStock(){
 
       html+=`
       <div class="stock">
-        ${s.product} | ${s.username}
-        <br>Status: ${s.status}
-        <br>
+        <img src="${s.image || ''}" width="100%">
+        <p>${s.product}</p>
+        <p>${s.username}</p>
+        <p>Status: ${s.status}</p>
+
         <button class="edit" onclick="editStock('${d.id}')">Edit</button>
         <button class="delete" onclick="deleteStock('${d.id}')">Delete</button>
       </div>`;
@@ -216,6 +238,8 @@ window.editStock = async function(id){
     username:newUser,
     password:newPass
   });
+
+  alert("Updated!");
 };
 
 // STOCK COUNT
@@ -250,7 +274,7 @@ function displayOrders(list){
   });
 }
 
-// APPROVE WITH PRODUCT MATCH
+// APPROVE
 window.approve=async function(orderId,product){
 
   const q=query(
