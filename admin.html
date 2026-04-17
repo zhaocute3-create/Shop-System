@@ -12,6 +12,9 @@ button{background:#00ff88;border:none;padding:10px;margin:5px}
 
 <h2>🔥 ADMIN PANEL</h2>
 
+<!-- ✅ ADDED (SAFE) -->
+<h3>👥 Online Users: <span id="onlineCount">0</span></h3>
+
 <input id="product" placeholder="Product"><br>
 <input id="user" placeholder="Username"><br>
 <input id="pass" placeholder="Password"><br>
@@ -111,6 +114,12 @@ window.disapprove=async(id)=>{
  await deleteDoc(doc(db,"orders",id));
  alert("Disapproved ❌");
 };
+
+// ✅ ADDED (SAFE - ONLINE USERS REALTIME)
+onSnapshot(collection(db,"presence"),snap=>{
+ document.getElementById("onlineCount").innerText = snap.size;
+});
+
 </script>
 
 </body>
