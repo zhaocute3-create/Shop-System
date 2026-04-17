@@ -7,14 +7,41 @@
 body {
   margin:0;
   font-family:Arial;
-  background:linear-gradient(135deg,#0f172a,#020617);
+  background:#020617;
   color:white;
 }
 
+/* 🔥 LOADING SCREEN */
+#loading {
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:#020617;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+  z-index:999;
+}
+
+.loader {
+  border:5px solid #1e293b;
+  border-top:5px solid #22c55e;
+  border-radius:50%;
+  width:50px;
+  height:50px;
+  animation:spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform:rotate(0deg); }
+  100% { transform:rotate(360deg); }
+}
+
+/* MAIN UI */
 .header {
   padding:15px;
   text-align:center;
-  font-size:20px;
   background:#020617;
 }
 
@@ -27,7 +54,7 @@ body {
   margin-bottom:15px;
 }
 
-input, button {
+button, input {
   width:100%;
   padding:10px;
   margin:5px 0;
@@ -38,7 +65,6 @@ input, button {
 button {
   background:#22c55e;
   color:white;
-  font-weight:bold;
 }
 
 .order {
@@ -53,16 +79,26 @@ button {
 
 <body>
 
-<div class="header">🔥 PRO Dashboard</div>
+<!-- 🔥 LOADING -->
+<div id="loading">
+  <div class="loader"></div>
+  <p>Loading your account...</p>
+</div>
+
+<!-- MAIN -->
+<div id="main" style="display:none;">
+
+<div class="header">
+  🎮 Dashboard
+</div>
 
 <div class="container">
 
 <div class="card">
-  <h3 id="userEmail">Loading...</h3>
+  <h3 id="userEmail"></h3>
 </div>
 
 <div class="card">
-  <h3>Buy Product</h3>
   <input id="ref" placeholder="GCash Ref">
   <button onclick="buy()">Buy</button>
 </div>
@@ -70,6 +106,8 @@ button {
 <div class="card">
   <h3>My Orders (LIVE)</h3>
   <div id="orders"></div>
+</div>
+
 </div>
 
 </div>
@@ -82,7 +120,7 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // CONFIG
 const firebaseConfig = {
-  apiKey: "AIzaSy...",
+  apiKey: "AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
   authDomain: "accountshop-a94e8.firebaseapp.com",
   projectId: "accountshop-a94e8",
   appId: "1:396312062190:web:c4ac936bd7f5bc11f0ebff"
@@ -92,13 +130,24 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// USER
+// ⏱️ Anti-spam
+let lastBuyTime = 0;
+
+// AUTH CHECK
 onAuthStateChanged(auth, (user) => {
-  if (!user) return location.href = "index.html";
+
+  if (!user) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  // ✅ SHOW MAIN UI
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("main").style.display = "block";
 
   document.getElementById("userEmail").innerText = user.email;
 
-  // 🔥 REAL-TIME LISTENER
+  // 🔥 REAL-TIME ORDERS
   onSnapshot(collection(db, "orders"), (snapshot) => {
     document.getElementById("orders").innerHTML = "";
 
@@ -116,18 +165,35 @@ onAuthStateChanged(auth, (user) => {
       }
     });
   });
+
 });
 
 // BUY
 window.buy = async function(){
+  const now = Date.now();
+
+  if(now - lastBuyTime < 10000){
+    alert("Wait 10 seconds!");
+    return;
+  }
+
   let user = auth.currentUser;
+  let ref = document.getElementById("ref").value;
+
+  if(!ref){
+    alert("Enter GCash Ref!");
+    return;
+  }
 
   await addDoc(collection(db, "orders"), {
     email: user.email,
     item: "Premium",
     price: 50,
+    reference: ref,
     status: "pending"
   });
+
+  lastBuyTime = now;
 
   alert("Order sent!");
 };
