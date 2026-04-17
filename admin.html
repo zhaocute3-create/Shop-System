@@ -68,15 +68,7 @@ img{
   <p>Approved: <span id="approvedCount">0</span></p>
 </div>
 
-<div class="box">
-  <select onchange="filterStatus(this.value)">
-    <option value="all">All</option>
-    <option value="pending">Pending</option>
-    <option value="approved">Approved</option>
-  </select>
-</div>
-
-<!-- 🔥 ADD STOCK WITH IMAGE -->
+<!-- ADD STOCK -->
 <div class="box">
   <h3>Add Stock</h3>
 
@@ -91,15 +83,12 @@ img{
   <input type="file" id="stockImage">
 
   <button onclick="addStock()">Add Stock</button>
-  <p id="stockCount">Stock: Loading...</p>
 </div>
 
 <div class="box">
   <h3>📦 Stock List</h3>
   <div id="stockList"></div>
 </div>
-
-<input type="text" id="search" placeholder="Search email..." oninput="searchOrders()">
 
 <div id="orders" class="box"></div>
 
@@ -151,154 +140,59 @@ await setPersistence(auth, browserLocalPersistence);
 
 const ADMIN_EMAIL = "jhonlouiebaid92@gmail.com";
 
-let allOrders = [];
-let currentFilter = "";
-
-// 🔐 AUTH
+// AUTH CHECK
 onAuthStateChanged(auth, (user) => {
   if (user === null) return;
 
   if (!user || user.email !== ADMIN_EMAIL) {
     alert("Access Denied!");
-    window.location.replace("index.html");
+    location.replace("index.html");
     return;
   }
 
   loadStock();
-  loadStockCount();
   loadOrders();
 });
 
-// 🔥 ORDERS
-function loadOrders(){
-  onSnapshot(collection(db, "orders"), (snap) => {
-
-    allOrders = [];
-    let total = 0, pending = 0, approved = 0;
-
-    snap.forEach(d => {
-      let data = d.data();
-      allOrders.push({ id: d.id, ...data });
-
-      if (data.status === "approved"){
-        total += Number(data.price || 0);
-        approved++;
-      } else pending++;
-    });
-
-    earnings.innerText = "₱ " + total;
-    pendingCount.innerText = pending;
-    approvedCount.innerText = approved;
-
-    applyFilter();
-  });
-}
-
-function applyFilter(){
-  let list = allOrders;
-
-  if(currentFilter){
-    list = list.filter(o => o.status === currentFilter);
-  }
-
-  displayOrders(list);
-}
-
-window.filterStatus = function(status){
-  currentFilter = status === "all" ? "" : status;
-  applyFilter();
-};
-
-window.searchOrders = function(){
-  let val = search.value.toLowerCase();
-  displayOrders(allOrders.filter(o => (o.email||"").toLowerCase().includes(val)));
-};
-
-// DISPLAY ORDERS
-function displayOrders(list){
-  orders.innerHTML = "";
-
-  list.forEach(o=>{
-    orders.innerHTML+=`
-    <div class="order">
-      ${o.email}<br>
-      ${o.item || "Account"} - ₱${o.price || 0}<br>
-      Status: ${o.status}
-      ${o.status!=="approved"
-        ? `<br><button onclick="approve('${o.id}','${o.item || "CODM"}')">Approve</button>`
-        : `<br>✅ Sent`}
-    </div>`;
-  });
-}
-
-// ✅ APPROVE AUTO STOCK
-window.approve = async function(orderId,product){
-
-  const q=query(
-    collection(db,"accounts"),
-    where("status","==","available"),
-    where("product","==",product),
-    limit(1)
-  );
-
-  const snap=await getDocs(q);
-
-  if(snap.empty) return alert("No stock!");
-
-  let accDoc=snap.docs[0];
-  let acc=accDoc.data();
-
-  await updateDoc(doc(db,"accounts",accDoc.id),{
-    status:"sold"
-  });
-
-  await updateDoc(doc(db,"orders",orderId),{
-    status:"approved",
-    account:`USER: ${acc.username}\nPASS: ${acc.password}`
-  });
-
-  alert("Delivered!");
-};
-
-// 🔥 ADD STOCK WITH IMAGE
+// ADD STOCK (FIXED)
 window.addStock = async function(){
 
-  let user = stockUser.value;
-  let pass = stockPass.value;
-  let product = product.value;
-  let file = stockImage.files[0];
+  const user = document.getElementById("stockUser").value;
+  const pass = document.getElementById("stockPass").value;
+  const product = document.getElementById("product").value;
+  const file = document.getElementById("stockImage").files[0];
 
   if(!user || !pass || !file){
-    return alert("Complete all + image!");
+    return alert("Complete all fields!");
   }
 
   try{
-
     const storageRef = ref(storage, "accounts/" + Date.now());
     await uploadBytes(storageRef, file);
 
     const url = await getDownloadURL(storageRef);
 
     await addDoc(collection(db,"accounts"),{
-      username:user,
-      password:pass,
-      product:product,
-      image:url,
-      status:"available"
+      username: user,
+      password: pass,
+      product: product,
+      image: url,
+      status: "available"
     });
 
-    stockUser.value="";
-    stockPass.value="";
-    stockImage.value="";
+    document.getElementById("stockUser").value="";
+    document.getElementById("stockPass").value="";
+    document.getElementById("stockImage").value="";
 
-    alert("Stock added!");
+    alert("✅ Stock Added!");
 
   }catch(e){
-    alert("Upload error");
+    console.error(e);
+    alert("Upload error!");
   }
 };
 
-// 📦 STOCK LIST
+// LOAD STOCK
 function loadStock(){
   onSnapshot(collection(db,"accounts"), snap=>{
     let html="";
@@ -311,8 +205,7 @@ function loadStock(){
         ${s.product} | ${s.username}
         <br>Status: ${s.status}
         <br>
-        <button class="edit" onclick="editStock('${d.id}')">Edit</button>
-        <button class="delete" onclick="deleteStock('${d.id}')">Delete</button>
+        <button onclick="deleteStock('${d.id}')">Delete</button>
       </div>`;
     });
 
@@ -325,22 +218,32 @@ window.deleteStock = async id=>{
   await deleteDoc(doc(db,"accounts",id));
 };
 
-// EDIT
-window.editStock = async id=>{
-  let u=prompt("New Username");
-  let p=prompt("New Password");
-  if(!u||!p)return;
+// LOAD ORDERS
+function loadOrders(){
+  onSnapshot(collection(db,"orders"), snap=>{
+    let html="";
+    let pending=0, approved=0, total=0;
 
-  await updateDoc(doc(db,"accounts",id),{
-    username:u,password:p
+    snap.forEach(d=>{
+      let o=d.data();
+
+      if(o.status==="approved"){
+        approved++;
+        total+=Number(o.price||0);
+      }else pending++;
+
+      html+=`
+      <div class="order">
+        ${o.email}<br>
+        Status: ${o.status}
+      </div>`;
+    });
+
+    document.getElementById("orders").innerHTML=html;
+    document.getElementById("pendingCount").innerText=pending;
+    document.getElementById("approvedCount").innerText=approved;
+    document.getElementById("earnings").innerText="₱ "+total;
   });
-};
-
-// COUNT
-async function loadStockCount(){
-  const q=query(collection(db,"accounts"),where("status","==","available"));
-  const snap=await getDocs(q);
-  stockCount.innerText="Stock: "+snap.size;
 }
 
 // LOGOUT
