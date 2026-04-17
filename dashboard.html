@@ -54,7 +54,27 @@ onAuthStateChanged(auth,async user=>{
   });
 
   orders.innerHTML=html;
- });
+import {
+ doc, setDoc, deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import {
+ onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+onAuthStateChanged(auth, async user=>{
+ if(user){
+  let ref = doc(db,"presence",user.uid);
+
+  await setDoc(ref,{
+   email:user.email,
+   online:true
+  });
+
+  window.addEventListener("beforeunload",()=>{
+   deleteDoc(ref);
+  });
+ }
 });
 </script>
 
