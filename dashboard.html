@@ -1,15 +1,76 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Shop</title>
+<title>Game Shop</title>
 
 <style>
-body{margin:0;background:#020617;color:white;font-family:Arial;}
-#loading{position:fixed;width:100%;height:100%;display:flex;justify-content:center;align-items:center;background:#020617;}
-.container{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px;padding:15px;}
-.card{background:#1e293b;padding:15px;border-radius:15px;}
-button,input{width:100%;padding:10px;margin-top:5px;border:none;border-radius:10px;}
-button{background:#22c55e;}
+body{
+  margin:0;
+  font-family:Arial;
+  background:#020617;
+  color:white;
+}
+
+#loading{
+  position:fixed;
+  width:100%;
+  height:100%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:#020617;
+  font-size:20px;
+}
+
+.header{
+  text-align:center;
+  padding:15px;
+  font-size:22px;
+  font-weight:bold;
+}
+
+.container{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:15px;
+  padding:15px;
+}
+
+.card{
+  background:#1e293b;
+  padding:15px;
+  border-radius:15px;
+  position:relative;
+}
+
+.card img{
+  width:100%;
+  border-radius:10px;
+  margin-bottom:10px;
+}
+
+.status{
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:red;
+  padding:5px 10px;
+  border-radius:10px;
+  font-size:12px;
+}
+
+button,input{
+  width:100%;
+  padding:10px;
+  margin-top:5px;
+  border:none;
+  border-radius:10px;
+}
+
+button{
+  background:#22c55e;
+  color:white;
+}
 </style>
 
 </head>
@@ -17,9 +78,10 @@ button{background:#22c55e;}
 <body>
 
 <div id="loading">Loading...</div>
+
 <div id="main" style="display:none;">
-<h2 style="text-align:center;">🎮 Shop</h2>
-<div class="container" id="shop"></div>
+  <div class="header">🎮 Game Account Shop</div>
+  <div class="container" id="shop"></div>
 </div>
 
 <script type="module">
@@ -41,6 +103,7 @@ import {
   updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+// 🔥 CONFIG (KEEP YOURS)
 const firebaseConfig = {
   apiKey: "AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
   authDomain: "accountshop-a94e8.firebaseapp.com",
@@ -54,70 +117,104 @@ const db = getFirestore(app);
 
 await setPersistence(auth, browserLocalPersistence);
 
-let lastBuy=0;
+let lastBuy = 0;
+let currentUser = null;
 
-// 🔐 FIX LOOP
+// ✅ FIX LOOP (IMPORTANT)
 onAuthStateChanged(auth,(user)=>{
-  if(user===null) return;
+  if(user === null) return;
 
   if(!user){
-    location.replace("index.html");
+    window.location.replace("index.html");
     return;
   }
 
-  loading.style.display="none";
-  main.style.display="block";
+  currentUser = user;
 
-  loadShop(user);
+  document.getElementById("loading").style.display="none";
+  document.getElementById("main").style.display="block";
+
+  loadShop();
 });
 
-function loadShop(user){
-  onSnapshot(collection(db,"accounts"),snap=>{
-    shop.innerHTML="";
+// 🔥 LOAD SHOP
+function loadShop(){
+  onSnapshot(collection(db,"accounts"), snap => {
+
+    let html = "";
 
     snap.forEach(docSnap=>{
-      let a=docSnap.data();
-      let id=docSnap.id;
+      let a = docSnap.data();
+      let id = docSnap.id;
 
-      shop.innerHTML+=`
+      html += `
       <div class="card">
-        <h3>${a.product}</h3>
-        <p>Status: ${a.status}</p>
 
-        <input id="ref_${id}" placeholder="GCash Ref">
+        ${a.status !== "available" ? `<div class="status">${a.status.toUpperCase()}</div>` : ""}
+
+        <img src="${a.image || 'https://via.placeholder.com/300x180?text=No+Image'}">
+
+        <h3>${a.product || "Game Account"}</h3>
+        <p>Account ID: ${id.slice(0,6)}</p>
 
         ${
-          a.status==="available"
-          ? `<button onclick="buy('${id}')">Buy</button>`
-          : `<button disabled>SOLD</button>`
+          a.status === "available"
+          ? `
+            <input id="ref_${id}" placeholder="GCash Reference">
+            <button onclick="buy('${id}')">Buy Now</button>
+          `
+          : `<button disabled>Not Available</button>`
         }
+
       </div>`;
     });
+
+    document.getElementById("shop").innerHTML = html;
   });
 }
 
-window.buy=async(id)=>{
-  let now=Date.now();
-  if(now-lastBuy<10000) return alert("Wait 10s");
+// 🛒 BUY SYSTEM
+window.buy = async function(id){
 
-  let user=auth.currentUser;
-  let ref=document.getElementById("ref_"+id).value;
+  const now = Date.now();
 
-  if(!ref) return alert("Enter ref");
+  if(now - lastBuy < 10000){
+    alert("Wait 10 seconds!");
+    return;
+  }
 
-  await addDoc(collection(db,"orders"),{
-    email:user.email,
-    accountId:id,
-    status:"pending"
-  });
+  let ref = document.getElementById("ref_"+id).value;
 
-  await updateDoc(doc(db,"accounts",id),{
-    status:"reserved"
-  });
+  if(!ref){
+    alert("Enter GCash Ref!");
+    return;
+  }
 
-  lastBuy=now;
-  alert("Ordered!");
+  try{
+
+    // CREATE ORDER
+    await addDoc(collection(db,"orders"),{
+      email: currentUser.email,
+      accountId: id,
+      reference: ref,
+      status: "pending",
+      price: 50
+    });
+
+    // LOCK ACCOUNT
+    await updateDoc(doc(db,"accounts",id),{
+      status:"reserved"
+    });
+
+    lastBuy = now;
+
+    alert("✅ Order placed!");
+
+  }catch(e){
+    alert("Error: "+e.message);
+  }
 };
+
 </script>
 
 </body>
