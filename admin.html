@@ -5,11 +5,9 @@
 
 <style>
 body{background:#020617;color:white;font-family:Arial;text-align:center;}
-.box{background:#1e293b;padding:15px;margin:15px;border-radius:15px;}
-input,select,button{width:90%;padding:10px;margin:5px;border-radius:10px;border:none;}
+.box{background:#1e293b;padding:20px;margin:15px;border-radius:15px;}
+input,select,button{width:90%;padding:10px;margin:5px;border:none;border-radius:10px;}
 button{background:#22c55e;color:white;}
-.order,.stock{background:#0f172a;padding:10px;margin:10px;border-radius:10px;}
-img{width:100%;border-radius:10px;}
 </style>
 </head>
 
@@ -21,13 +19,14 @@ img{width:100%;border-radius:10px;}
 <h3>Add Stock</h3>
 
 <select id="product">
-<option>CODM</option>
-<option>ML</option>
-<option>Netflix</option>
+<option value="CODM">CODM</option>
+<option value="ML">ML</option>
+<option value="Netflix">Netflix</option>
 </select>
 
-<input id="user" placeholder="Username">
-<input id="pass" placeholder="Password">
+<input id="stockUser" placeholder="Username">
+<input id="stockPass" placeholder="Password">
+
 <input type="file" id="img">
 
 <button onclick="addStock()">ADD STOCK</button>
@@ -38,19 +37,27 @@ img{width:100%;border-radius:10px;}
 <div id="stockList"></div>
 </div>
 
-<div class="box">
-<h3>📥 ORDERS</h3>
-<div id="orders"></div>
-</div>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth,onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
 import {
-getFirestore,collection,addDoc,onSnapshot,doc,updateDoc,query,where,getDocs,limit
+getAuth,
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+import {
+getFirestore,
+collection,
+addDoc,
+onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ✅ STORAGE IMPORT (IMPORTANT)
 import {
-getStorage,ref,uploadBytes,getDownloadURL
+getStorage,
+ref,
+uploadBytes,
+getDownloadURL
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 const firebaseConfig={
@@ -61,99 +68,78 @@ appId:"1:396312062190:web:c4ac936bd7f5bc11f0ebff"
 };
 
 const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
 const auth=getAuth(app);
+const db=getFirestore(app);
 const storage=getStorage(app);
 
-// 🔐 AUTH FIX
-onAuthStateChanged(auth,(user)=>{
-if(user===null)return;
-if(!user) location="index.html";
+// 🔐 CHECK ADMIN
+onAuthStateChanged(auth,user=>{
+if(!user){
+location="index.html";
+return;
+}
+
+loadStock();
 });
 
-// ADD STOCK WITH IMAGE
+// 🔥 ADD STOCK FIXED
 window.addStock=async()=>{
-let file=img.files[0];
-if(!user.value||!pass.value||!file) return alert("Fill all!");
+let user=stockUser.value;
+let pass=stockPass.value;
+let product=productSelect.value;
+let file=document.getElementById("img").files[0];
 
-let sRef=ref(storage,"stocks/"+Date.now());
-await uploadBytes(sRef,file);
-let url=await getDownloadURL(sRef);
+if(!user||!pass||!file){
+alert("Fill all!");
+return;
+}
 
+try{
+
+// 📤 UPLOAD IMAGE
+let storageRef=ref(storage,"products/"+Date.now());
+await uploadBytes(storageRef,file);
+let url=await getDownloadURL(storageRef);
+
+// 💾 SAVE TO FIRESTORE
 await addDoc(collection(db,"accounts"),{
-username:user.value,
-password:pass.value,
-product:product.value,
+username:user,
+password:pass,
+product:product,
 image:url,
 status:"available"
 });
 
-alert("Stock Added!");
+alert("✅ Added with image!");
+
+stockUser.value="";
+stockPass.value="";
+img.value="";
+
+}catch(e){
+console.error(e);
+alert("Upload error!");
+}
 };
 
-// SHOW STOCK
+// 🔥 LOAD STOCK
+function loadStock(){
 onSnapshot(collection(db,"accounts"),snap=>{
 stockList.innerHTML="";
-snap.forEach(d=>{
-let s=d.data();
+
+snap.forEach(doc=>{
+let d=doc.data();
 
 stockList.innerHTML+=`
-<div class="stock">
-<img src="${s.image}">
-${s.product}<br>
-${s.username}<br>
-Status: ${s.status}
+<div class="box">
+<img src="${d.image}" width="100%">
+<p>${d.product}</p>
+<p>${d.username}</p>
+<p>Status: ${d.status}</p>
 </div>`;
 });
 });
-
-// SHOW ORDERS + AUTO SEND
-onSnapshot(collection(db,"orders"),snap=>{
-orders.innerHTML="";
-
-snap.forEach(async d=>{
-let o=d.data();
-
-orders.innerHTML+=`
-<div class="order">
-${o.email}<br>
-${o.product}<br>
-Status: ${o.status}<br>
-${o.proof?`<img src="${o.proof}">`:''}
-${o.status==="pending"
-? `<button onclick="approve('${d.id}','${o.product}')">APPROVE</button>`
-: "✅ Done"}
-</div>`;
-});
-});
-
-// AUTO SEND SYSTEM
-window.approve=async(id,product)=>{
-
-const q=query(
-collection(db,"accounts"),
-where("status","==","available"),
-where("product","==",product),
-limit(1)
-);
-
-const snap=await getDocs(q);
-if(snap.empty) return alert("No stock!");
-
-let accDoc=snap.docs[0];
-let acc=accDoc.data();
-
-await updateDoc(doc(db,"accounts",accDoc.id),{
-status:"sold"
-});
-
-await updateDoc(doc(db,"orders",id),{
-status:"approved",
-account:`USER: ${acc.username}\nPASS: ${acc.password}`
-});
-
-alert("Account Sent!");
-};
+}
 </script>
 
 </body>
