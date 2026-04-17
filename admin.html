@@ -1,96 +1,128 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>ADMIN</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 body{background:#020617;color:white;font-family:sans-serif}
 button{
-  background:#00ff88;border:none;padding:10px;margin:5px;
-  box-shadow:0 0 10px #00ff88;border-radius:10px;color:black
+background:#00ff88;
+padding:10px;
+border:none;
+margin:5px;
+box-shadow:0 0 10px #00ff88;
+border-radius:10px;
 }
 .card{
-  border:1px solid #00ff88;padding:10px;margin:10px;
-  border-radius:10px;box-shadow:0 0 10px #00ff88
-}
-input{
-  margin:5px;padding:8px;border-radius:8px;border:none
+border:1px solid #00ff88;
+margin:10px;
+padding:10px;
 }
 </style>
 </head>
+
 <body>
 
-<h2>🔥 ADMIN PANEL</h2>
+<h2>🔥 ADMIN PANEL V2</h2>
+
+<h3>💰 Earnings: <span id="earn">0</span></h3>
+<h3>📦 Orders: <span id="count">0</span></h3>
+<h3>👥 Online Users: <span id="online">0</span></h3>
+
+<canvas id="chart" height="100"></canvas>
+
+<hr>
 
 <input id="product" placeholder="Product"><br>
 <input id="user" placeholder="Username"><br>
 <input id="pass" placeholder="Password"><br>
-<input type="file" id="img"><br>
 
 <button onclick="addStock()">ADD STOCK</button>
-<button onclick="logout()">LOGOUT</button>
 
 <h3>📦 STOCK</h3>
 <div id="stock"></div>
 
 <h3>📥 ORDERS</h3>
-<input id="search" placeholder="search email" oninput="renderOrders()">
+<input id="search" placeholder="Search email" oninput="renderOrders()">
 <div id="orders"></div>
 
 <script type="module">
 import { db, auth } from "./firebase.js";
 
 import {
-collection, addDoc, onSnapshot,
-doc, updateDoc, getDoc
+collection,addDoc,onSnapshot,
+doc,updateDoc,getDoc,deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import {
-onAuthStateChanged, signOut
+onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const ADMIN="jhonlouiebaid92@gmail.com";
 let allOrders=[];
+let chart;
 
-// 🔐 SECURITY
-onAuthStateChanged(auth,u=>{
- if(!u || u.email!==ADMIN) location="index.html";
+// 🔒 SECURITY
+onAuthStateChanged(auth,user=>{
+ if(!user || user.email!=="jhonlouiebaid92@gmail.com"){
+  location="index.html";
+ }
+});
+
+// 📊 CHART INIT
+const ctx = document.getElementById("chart");
+chart = new Chart(ctx, {
+ type: "line",
+ data: {
+  labels: [],
+  datasets: [{
+   label: "Earnings",
+   data: [],
+  }]
+ }
+});
+
+// 💰 EARNINGS + GRAPH
+onSnapshot(collection(db,"earnings"),snap=>{
+ let total=0;
+ let data=[];
+ let labels=[];
+
+ snap.forEach(d=>{
+  total+=d.data().amount;
+  data.push(d.data().amount);
+  labels.push(new Date().toLocaleTimeString());
+ });
+
+ earn.innerText=total;
+
+ chart.data.labels=labels;
+ chart.data.datasets[0].data=data;
+ chart.update();
+});
+
+// 👥 ONLINE USERS
+onSnapshot(collection(db,"presence"),snap=>{
+ online.innerText=snap.size;
 });
 
 // ➕ ADD STOCK
-window.addStock=()=>{
- let file=document.getElementById("img").files[0];
-
- if(!file) return alert("Select image");
-
- let reader=new FileReader();
-
- reader.onload=async(e)=>{
-  await addDoc(collection(db,"accounts"),{
-   product:product.value,
-   username:user.value,
-   password:pass.value,
-   image:e.target.result,
-   status:"available"
-  });
-
-  alert("✅ Added!");
- };
-
- reader.readAsDataURL(file);
+window.addStock=async()=>{
+ await addDoc(collection(db,"accounts"),{
+  product:product.value,
+  username:user.value,
+  password:pass.value,
+  status:"available"
+ });
+ alert("Added!");
 };
 
 // 📦 STOCK VIEW
 onSnapshot(collection(db,"accounts"),snap=>{
  let html="";
- snap.forEach(docu=>{
-  let s=docu.data();
-
+ snap.forEach(d=>{
+  let s=d.data();
   if(s.status==="available"){
-   html+=`<div class="card">
-   <b>${s.product}</b><br>
-   ${s.username}<br>
-   ID: ${docu.id}
-   </div>`;
+   html+=`<div class="card">${s.product}</div>`;
   }
  });
  stock.innerHTML=html;
@@ -99,66 +131,52 @@ onSnapshot(collection(db,"accounts"),snap=>{
 // 📥 ORDERS
 onSnapshot(collection(db,"orders"),snap=>{
  allOrders=[];
+ count.innerText=snap.size;
+
  snap.forEach(d=>{
   allOrders.push({id:d.id,...d.data()});
  });
  renderOrders();
 });
 
-// 🔍 SEARCH + RENDER
+// 🔍 SEARCH
 window.renderOrders=()=>{
  let html="";
  let q=search.value.toLowerCase();
 
  allOrders.forEach(o=>{
-  if((o.user || "").toLowerCase().includes(q)){
-   html+=`<div class="card">
-   <b>${o.user}</b><br>
-   Product: ${o.product}<br>
-   Status: ${o.status}<br>
-
-   ${o.status==="pending" ? `
-   <button onclick="approve('${o.id}','${o.accountId}')">
-   Approve
-   </button>
-   ` : "✔ Done"}
+  if(o.email.toLowerCase().includes(q)){
+   html+=`
+   <div class="card">
+   ${o.email}<br>${o.status}
+   <button onclick="approve('${o.id}','${o.accId}')">Approve</button>
    </div>`;
   }
  });
-
  orders.innerHTML=html;
 };
 
-// ✅ APPROVE + AUTO SEND
-window.approve = async (orderId, accId) => {
+// ✅ APPROVE
+window.approve=async(id,accId)=>{
+ let acc=await getDoc(doc(db,"accounts",accId));
+ let data=acc.data();
 
-  let accSnap = await getDoc(doc(db, "accounts", accId));
-  let acc = accSnap.data();
+ await updateDoc(doc(db,"accounts",accId),{
+  status:"sold"
+ });
 
-  // mark sold
-  await updateDoc(doc(db, "accounts", accId), {
-    status: "sold"
-  });
+ await updateDoc(doc(db,"orders",id),{
+  status:"approved",
+  username:data.username,
+  password:data.password
+ });
 
-  // send credentials
-  await updateDoc(doc(db, "orders", orderId), {
-    status: "approved",
-    username: acc.username,
-    password: acc.password
-  });
+ await addDoc(collection(db,"earnings"),{
+  amount:100,
+  time:Date.now()
+ });
 
-  // earnings
-  await addDoc(collection(db,"earnings"),{
-    amount:100,
-    date:Date.now()
-  });
-
-  alert("🔥 Approved + Sent");
-};
-
-// 🚪 LOGOUT
-window.logout=()=>{
- signOut(auth).then(()=>location="index.html");
+ alert("Approved + Sent 🔥");
 };
 </script>
 
