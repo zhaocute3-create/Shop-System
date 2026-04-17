@@ -1,220 +1,112 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Game Shop</title>
+<title>Shop</title>
 
 <style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:#020617;
-  color:white;
-}
-
-#loading{
-  position:fixed;
-  width:100%;
-  height:100%;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  background:#020617;
-  font-size:20px;
-}
-
-.header{
-  text-align:center;
-  padding:15px;
-  font-size:22px;
-  font-weight:bold;
-}
-
-.container{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-  gap:15px;
-  padding:15px;
-}
-
-.card{
-  background:#1e293b;
-  padding:15px;
-  border-radius:15px;
-  position:relative;
-}
-
-.card img{
-  width:100%;
-  border-radius:10px;
-  margin-bottom:10px;
-}
-
-.status{
-  position:absolute;
-  top:10px;
-  right:10px;
-  background:red;
-  padding:5px 10px;
-  border-radius:10px;
-  font-size:12px;
-}
-
-button,input{
-  width:100%;
-  padding:10px;
-  margin-top:5px;
-  border:none;
-  border-radius:10px;
-}
-
-button{
-  background:#22c55e;
-  color:white;
-}
+body{background:#020617;color:white;font-family:Arial;}
+.container{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px;padding:15px;}
+.card{background:#1e293b;padding:15px;border-radius:15px;}
+img{width:100%;border-radius:10px;}
+button,input{width:100%;padding:10px;margin-top:5px;border:none;border-radius:10px;}
+button{background:#22c55e;}
+pre{background:black;padding:10px;border-radius:10px;}
 </style>
-
 </head>
 
 <body>
 
-<div id="loading">Loading...</div>
+<h2 style="text-align:center;">🎮 ZHAO BM SELLER</h2>
 
-<div id="main" style="display:none;">
-  <div class="header">🎮 Game Account Shop</div>
-  <div class="container" id="shop"></div>
-</div>
+<div class="container" id="shop"></div>
+
+<h2 style="text-align:center;">📦 My Orders</h2>
+<div class="container" id="myOrders"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
+import { getAuth,onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getAuth,
-  onAuthStateChanged,
-  setPersistence,
-  browserLocalPersistence
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
-import {
-  getFirestore,
-  collection,
-  onSnapshot,
-  addDoc,
-  doc,
-  updateDoc
+getFirestore,collection,onSnapshot,addDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// 🔥 CONFIG (KEEP YOURS)
-const firebaseConfig = {
-  apiKey: "AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
-  authDomain: "accountshop-a94e8.firebaseapp.com",
-  projectId: "accountshop-a94e8",
-  appId: "1:396312062190:web:c4ac936bd7f5bc11f0ebff"
+const firebaseConfig={
+apiKey:"AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
+authDomain:"accountshop-a94e8.firebaseapp.com",
+projectId:"accountshop-a94e8",
+appId:"1:396312062190:web:c4ac936bd7f5bc11f0ebff"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+const auth=getAuth(app);
 
-await setPersistence(auth, browserLocalPersistence);
-
-let lastBuy = 0;
-let currentUser = null;
-
-// ✅ FIX LOOP (IMPORTANT)
+// FIX LOOP
 onAuthStateChanged(auth,(user)=>{
-  if(user === null) return;
-
-  if(!user){
-    window.location.replace("index.html");
-    return;
-  }
-
-  currentUser = user;
-
-  document.getElementById("loading").style.display="none";
-  document.getElementById("main").style.display="block";
-
-  loadShop();
+if(user===null)return;
+if(!user) location="index.html";
 });
 
-// 🔥 LOAD SHOP
-function loadShop(){
-  onSnapshot(collection(db,"accounts"), snap => {
+// LOAD PRODUCTS
+onSnapshot(collection(db,"accounts"),snap=>{
+shop.innerHTML="";
 
-    let html = "";
+snap.forEach(docSnap=>{
+let a=docSnap.data();
 
-    snap.forEach(docSnap=>{
-      let a = docSnap.data();
-      let id = docSnap.id;
+shop.innerHTML+=`
+<div class="card">
+<img src="${a.image}">
+<h3>${a.product}</h3>
 
-      html += `
-      <div class="card">
+<input type="file" id="proof_${docSnap.id}">
 
-        ${a.status !== "available" ? `<div class="status">${a.status.toUpperCase()}</div>` : ""}
+<button onclick="buy('${docSnap.id}','${a.product}')">BUY</button>
+</div>`;
+});
+});
 
-        <img src="${a.image || 'https://via.placeholder.com/300x180?text=No+Image'}">
+// BUY WITH GCASH PROOF
+window.buy=async(id,product)=>{
+let file=document.getElementById("proof_"+id).files[0];
+if(!file) return alert("Upload GCash Proof!");
 
-        <h3>${a.product || "Game Account"}</h3>
-        <p>Account ID: ${id.slice(0,6)}</p>
-
-        ${
-          a.status === "available"
-          ? `
-            <input id="ref_${id}" placeholder="GCash Reference">
-            <button onclick="buy('${id}')">Buy Now</button>
-          `
-          : `<button disabled>Not Available</button>`
-        }
-
-      </div>`;
-    });
-
-    document.getElementById("shop").innerHTML = html;
-  });
-}
-
-// 🛒 BUY SYSTEM
-window.buy = async function(id){
-
-  const now = Date.now();
-
-  if(now - lastBuy < 10000){
-    alert("Wait 10 seconds!");
-    return;
-  }
-
-  let ref = document.getElementById("ref_"+id).value;
-
-  if(!ref){
-    alert("Enter GCash Ref!");
-    return;
-  }
-
-  try{
-
-    // CREATE ORDER
-    await addDoc(collection(db,"orders"),{
-      email: currentUser.email,
-      accountId: id,
-      reference: ref,
-      status: "pending",
-      price: 50
-    });
-
-    // LOCK ACCOUNT
-    await updateDoc(doc(db,"accounts",id),{
-      status:"reserved"
-    });
-
-    lastBuy = now;
-
-    alert("✅ Order placed!");
-
-  }catch(e){
-    alert("Error: "+e.message);
-  }
+let reader=new FileReader();
+reader.onload=async function(){
+await addDoc(collection(db,"orders"),{
+email:auth.currentUser.email,
+product:product,
+proof:reader.result,
+status:"pending"
+});
+alert("Order Sent!");
+};
+reader.readAsDataURL(file);
 };
 
+// SHOW MY ORDERS
+onSnapshot(collection(db,"orders"),snap=>{
+myOrders.innerHTML="";
+
+snap.forEach(d=>{
+let o=d.data();
+
+if(o.email===auth.currentUser.email){
+
+myOrders.innerHTML+=`
+<div class="card">
+${o.product}<br>
+Status: ${o.status}
+
+${
+o.status==="approved"
+? `<pre>${o.account}</pre>`
+: "Waiting..."
+}
+</div>`;
+}
+});
+});
 </script>
 
 </body>
