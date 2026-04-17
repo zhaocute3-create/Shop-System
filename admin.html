@@ -32,6 +32,7 @@ button {
 
 .delete { background:red; }
 .edit { background:orange; }
+.logout { background:red; }
 
 input, select {
   padding:10px;
@@ -39,11 +40,6 @@ input, select {
   border:none;
   width:80%;
   margin:5px;
-}
-
-img {
-  border-radius:10px;
-  margin-top:10px;
 }
 </style>
 
@@ -53,15 +49,36 @@ img {
 
 <h2>🔥 ADMIN PANEL PRO</h2>
 
+<!-- 🔥 LOGOUT -->
+<button class="logout" onclick="logout()">Logout</button>
+
 <!-- 💰 EARNINGS -->
 <div class="box">
   <h3>💰 Earnings</h3>
   <p id="earnings">Loading...</p>
 </div>
 
+<!-- 📊 ORDER STATS -->
+<div class="box">
+  <h3>📊 Orders</h3>
+  <p>Pending: <span id="pendingCount">0</span></p>
+  <p>Approved: <span id="approvedCount">0</span></p>
+</div>
+
+<!-- 🎛 FILTER -->
+<div class="box">
+  <select onchange="filterStatus(this.value)">
+    <option value="all">All</option>
+    <option value="pending">Pending</option>
+    <option value="approved">Approved</option>
+  </select>
+
+  <button onclick="loadOrders()">🔄 Refresh</button>
+</div>
+
 <!-- 📦 ADD STOCK -->
 <div class="box">
-  <h3>Add Stock (With Image)</h3>
+  <h3>Add Stock</h3>
 
   <select id="product">
     <option value="CODM">CODM</option>
@@ -71,7 +88,6 @@ img {
 
   <input id="stockUser" placeholder="Username">
   <input id="stockPass" placeholder="Password">
-  <input type="file" id="stockImg">
 
   <button onclick="addStock()">Add Stock</button>
   <p id="stockCount">Stock: Loading...</p>
@@ -94,6 +110,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import {
   getAuth,
   onAuthStateChanged,
+  signOut,
   setPersistence,
   browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -112,13 +129,6 @@ import {
   limit
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-import {
-  getStorage,
-  ref,
-  uploadBytes,
-  getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-
 const firebaseConfig = {
   apiKey: "AIza...",
   authDomain: "...",
@@ -129,13 +139,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
 await setPersistence(auth, browserLocalPersistence);
 
 const ADMIN_EMAIL = "jhonlouiebaid92@gmail.com";
 
 let allOrders = [];
+let currentFilter = "all";
 
 // AUTH
 onAuthStateChanged(auth, (user) => {
@@ -149,12 +159,17 @@ onAuthStateChanged(auth, (user) => {
 
   loadStock();
   loadStockCount();
+  loadOrders();
+});
 
-  // ORDERS LIVE
+// 🔄 REALTIME ORDERS
+function loadOrders(){
   onSnapshot(collection(db, "orders"), (snap) => {
     allOrders = [];
 
     let total = 0;
+    let pending = 0;
+    let approved = 0;
 
     snap.forEach(d => {
       let data = d.data();
@@ -162,103 +177,50 @@ onAuthStateChanged(auth, (user) => {
 
       if (data.status === "approved") {
         total += Number(data.price || 0);
+        approved++;
+      } else {
+        pending++;
       }
     });
 
-    document.getElementById("earnings").innerText = "₱ " + total;
+    earnings.innerText = "₱ " + total;
+    pendingCount.innerText = pending;
+    approvedCount.innerText = approved;
 
-    displayOrders(allOrders);
-  });
-});
-
-// 🔥 ADD STOCK WITH IMAGE
-window.addStock = async function(){
-  let user = stockUser.value;
-  let pass = stockPass.value;
-  let product = document.getElementById("product").value;
-  let file = document.getElementById("stockImg").files[0];
-
-  if(!user || !pass || !file) return alert("Fill all!");
-
-  const imgRef = ref(storage, "accounts/" + Date.now());
-  await uploadBytes(imgRef, file);
-  const imgURL = await getDownloadURL(imgRef);
-
-  await addDoc(collection(db, "accounts"), {
-    username:user,
-    password:pass,
-    product:product,
-    image:imgURL,
-    status:"available"
-  });
-
-  stockUser.value="";
-  stockPass.value="";
-  stockImg.value="";
-
-  loadStockCount();
-};
-
-// LOAD STOCK LIST (WITH IMAGE)
-function loadStock(){
-  onSnapshot(collection(db,"accounts"), snap=>{
-    let html="";
-    snap.forEach(d=>{
-      let s=d.data();
-
-      html+=`
-      <div class="stock">
-        <img src="${s.image || ''}" width="100%">
-        <p>${s.product}</p>
-        <p>${s.username}</p>
-        <p>Status: ${s.status}</p>
-
-        <button class="edit" onclick="editStock('${d.id}')">Edit</button>
-        <button class="delete" onclick="deleteStock('${d.id}')">Delete</button>
-      </div>`;
-    });
-
-    stockList.innerHTML=html;
+    applyFilter();
   });
 }
 
-// DELETE
-window.deleteStock = async function(id){
-  await deleteDoc(doc(db,"accounts",id));
+// FILTER
+window.filterStatus = function(status){
+  currentFilter = status;
+  applyFilter();
 };
 
-// EDIT
-window.editStock = async function(id){
-  let newUser = prompt("New Username:");
-  let newPass = prompt("New Password:");
+function applyFilter(){
+  let list = allOrders;
 
-  if(!newUser || !newPass) return;
+  if(currentFilter !== "all"){
+    list = list.filter(o => o.status === currentFilter);
+  }
 
-  await updateDoc(doc(db,"accounts",id),{
-    username:newUser,
-    password:newPass
-  });
-
-  alert("Updated!");
-};
-
-// STOCK COUNT
-async function loadStockCount(){
-  const q=query(collection(db,"accounts"),where("status","==","available"));
-  const snap=await getDocs(q);
-
-  stockCount.innerText="Stock: "+snap.size;
+  displayOrders(list);
 }
 
 // SEARCH
-window.searchOrders=function(){
-  let val=search.value.toLowerCase();
-  displayOrders(allOrders.filter(o=>o.email.toLowerCase().includes(val)));
+window.searchOrders = function(){
+  let val = search.value.toLowerCase();
+
+  let filtered = allOrders.filter(o => 
+    (o.email || "").toLowerCase().includes(val)
+  );
+
+  displayOrders(filtered);
 };
 
-// DISPLAY ORDERS
+// DISPLAY
 function displayOrders(list){
-  orders.innerHTML="";
+  orders.innerHTML = "";
 
   list.forEach(o=>{
     orders.innerHTML+=`
@@ -275,7 +237,7 @@ function displayOrders(list){
 }
 
 // APPROVE
-window.approve=async function(orderId,product){
+window.approve = async function(orderId,product){
 
   const q=query(
     collection(db,"accounts"),
@@ -301,6 +263,78 @@ window.approve=async function(orderId,product){
   });
 
   alert("Auto sent!");
+};
+
+// ADD STOCK
+window.addStock = async function(){
+  let user = stockUser.value;
+  let pass = stockPass.value;
+  let product = document.getElementById("product").value;
+
+  if(!user || !pass) return alert("Fill all!");
+
+  await addDoc(collection(db, "accounts"), {
+    username:user,
+    password:pass,
+    product:product,
+    status:"available"
+  });
+
+  stockUser.value="";
+  stockPass.value="";
+};
+
+// STOCK LIST
+function loadStock(){
+  onSnapshot(collection(db,"accounts"), snap=>{
+    let html="";
+    snap.forEach(d=>{
+      let s=d.data();
+
+      html+=`
+      <div class="stock">
+        ${s.product} | ${s.username}
+        <br>Status: ${s.status}
+        <br>
+        <button class="edit" onclick="editStock('${d.id}')">Edit</button>
+        <button class="delete" onclick="deleteStock('${d.id}')">Delete</button>
+      </div>`;
+    });
+
+    stockList.innerHTML=html;
+  });
+}
+
+// DELETE
+window.deleteStock = async function(id){
+  await deleteDoc(doc(db,"accounts",id));
+};
+
+// EDIT
+window.editStock = async function(id){
+  let newUser = prompt("New Username:");
+  let newPass = prompt("New Password:");
+
+  if(!newUser || !newPass) return;
+
+  await updateDoc(doc(db,"accounts",id),{
+    username:newUser,
+    password:newPass
+  });
+};
+
+// STOCK COUNT
+async function loadStockCount(){
+  const q=query(collection(db,"accounts"),where("status","==","available"));
+  const snap=await getDocs(q);
+  stockCount.innerText="Stock: "+snap.size;
+}
+
+// LOGOUT
+window.logout = function(){
+  signOut(auth).then(()=>{
+    window.location.replace("index.html");
+  });
 };
 </script>
 
