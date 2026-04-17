@@ -1,14 +1,28 @@
 <!DOCTYPE html>
 <html>
-<body style="background:#020617;color:white">
+<body style="background:#020617;color:white;font-family:sans-serif">
 
-<h2>SHOP</h2>
+<h2>🛒 SHOP</h2>
 <div id="shop"></div>
 
 <script type="module">
 import { db, auth } from "./firebase.js";
-import { collection,onSnapshot,addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+collection,onSnapshot,addDoc,doc,setDoc,deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+// ONLINE TRACKER
+onAuthStateChanged(auth, async user=>{
+ if(user){
+  let ref=doc(db,"presence",user.uid);
+  await setDoc(ref,{email:user.email});
+  window.addEventListener("beforeunload",()=>deleteDoc(ref));
+ }
+});
+
+// LOAD PRODUCTS
 onSnapshot(collection(db,"accounts"),snap=>{
  let html="";
  snap.forEach(d=>{
@@ -16,26 +30,44 @@ onSnapshot(collection(db,"accounts"),snap=>{
 
   if(s.status==="available"){
    html+=`
-   <div>
-   ${s.product}<br>
+   <div style="border:1px solid #00ffcc;margin:10px;padding:10px;border-radius:10px">
+   <b>${s.product}</b><br>
    ₱${s.price}<br>
-   <button onclick="buy('${d.id}','${s.product}')">BUY</button>
-   </div><hr>`;
+   <button onclick="buy('${d.id}','${s.product}','${s.price}')">BUY</button>
+   </div>`;
   }
  });
-
  shop.innerHTML=html;
 });
 
-window.buy=async(id,product)=>{
- await addDoc(collection(db,"orders"),{
-  user:auth.currentUser.email,
-  product:product,
-  accountId:id,
-  status:"pending"
- });
+// BUY
+window.buy=async(id,product,price)=>{
+ let user=auth.currentUser;
 
- alert("Order sent");
+ let ref=prompt("Enter GCash Ref:");
+ if(!ref)return;
+
+ let input=document.createElement("input");
+ input.type="file";
+
+ input.onchange=()=>{
+  let reader=new FileReader();
+  reader.onload=async(e)=>{
+   await addDoc(collection(db,"orders"),{
+    user:user.email,
+    product:product,
+    accountId:id,
+    price:price,
+    ref:ref,
+    receipt:e.target.result,
+    status:"pending"
+   });
+   alert("Sent ✅");
+  };
+  reader.readAsDataURL(input.files[0]);
+ };
+
+ input.click();
 };
 </script>
 
