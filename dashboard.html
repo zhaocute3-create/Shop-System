@@ -11,6 +11,20 @@ body {
   color:white;
 }
 
+/* LOADING */
+#loading {
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:#020617;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+  z-index:999;
+}
+
+/* HEADER */
 .header {
   padding:15px;
   text-align:center;
@@ -18,6 +32,7 @@ body {
   font-size:20px;
 }
 
+/* GRID */
 .container {
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
@@ -47,16 +62,6 @@ body {
   font-size:12px;
 }
 
-.reserved {
-  position:absolute;
-  top:10px;
-  right:10px;
-  background:orange;
-  padding:5px 10px;
-  border-radius:10px;
-  font-size:12px;
-}
-
 button {
   width:100%;
   padding:10px;
@@ -75,19 +80,30 @@ input {
   border-radius:10px;
 }
 </style>
+
 </head>
 
 <body>
 
-<div class="header">🎮 Game Account Shop</div>
-<div class="container" id="shop"></div>
+<!-- LOADING -->
+<div id="loading">
+  <h2>Loading...</h2>
+</div>
+
+<!-- MAIN -->
+<div id="main" style="display:none;">
+  <div class="header">🎮 Game Account Shop</div>
+  <div class="container" id="shop"></div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
 import {
   getAuth,
-  onAuthStateChanged
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 import {
@@ -99,35 +115,45 @@ import {
   updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// CONFIG
+// 🔥 YOUR REAL CONFIG (wag ... dapat buo)
 const firebaseConfig = {
-  apiKey: "AIza...",
-  authDomain: "...",
-  projectId: "...",
-  appId: "..."
+  apiKey: "YOUR_REAL_APIKEY",
+  authDomain: "YOUR_REAL_AUTHDOMAIN",
+  projectId: "YOUR_REAL_PROJECTID",
+  appId: "YOUR_REAL_APPID"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// 🔥 KEEP LOGIN SESSION
+await setPersistence(auth, browserLocalPersistence);
+
 // ⏱️ Anti spam
 let lastBuy = 0;
 
-// 🔐 AUTH + LOAD SHOP
+// 🔐 FIXED AUTH CHECK (NO LOOP)
 onAuthStateChanged(auth, (user) => {
+
+  // ⚠️ WAIT muna wag redirect agad
+  if (user === null) return;
 
   if (!user) {
     window.location.replace("index.html");
     return;
   }
 
-  // ✅ LOAD SHOP ONLY IF LOGGED IN
+  // ✅ SHOW UI
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("main").style.display = "block";
+
   loadShop(user);
 });
 
 // 🔥 LOAD SHOP
 function loadShop(user){
+
   onSnapshot(collection(db,"accounts"), snap => {
 
     let html = "";
@@ -138,24 +164,19 @@ function loadShop(user){
 
       html += `
       <div class="card">
-
         ${a.status === "sold" ? `<div class="sold">SOLD</div>` : ""}
-        ${a.status === "reserved" ? `<div class="reserved">RESERVED</div>` : ""}
 
         <img src="${a.image || 'https://via.placeholder.com/300'}">
-
         <h3>${a.product}</h3>
-        <p>₱${a.price || 50}</p>
-        <p>ID: ${id.slice(0,5)}</p>
+        <p>Account #${id.slice(0,5)}</p>
 
         <input id="ref_${id}" placeholder="GCash Ref">
 
         ${
           a.status === "available"
-          ? `<button onclick="buy('${id}','${a.product}','${a.price || 50}')">Buy</button>`
-          : `<button disabled>${a.status.toUpperCase()}</button>`
+          ? `<button onclick="buy('${id}')">Buy</button>`
+          : `<button disabled>SOLD</button>`
         }
-
       </div>`;
     });
 
@@ -164,7 +185,7 @@ function loadShop(user){
 }
 
 // 🛒 BUY
-window.buy = async function(id, product, price){
+window.buy = async function(id){
 
   const now = Date.now();
 
@@ -178,17 +199,15 @@ window.buy = async function(id, product, price){
 
   if(!ref) return alert("Enter GCash Ref!");
 
-  // ✅ CREATE ORDER (COMPLETE DATA)
+  // SAVE ORDER
   await addDoc(collection(db,"orders"),{
     email:user.email,
     accountId:id,
-    item:product,
-    price:price,
-    reference:ref,
+    reference: ref,
     status:"pending"
   });
 
-  // 🔒 RESERVE ACCOUNT
+  // 🔒 LOCK ACCOUNT
   await updateDoc(doc(db,"accounts",id),{
     status:"reserved"
   });
