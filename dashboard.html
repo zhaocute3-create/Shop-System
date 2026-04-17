@@ -1,23 +1,9 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>User Dashboard</title>
-</head>
+<body style="background:#020617;color:white;text-align:center">
 
-<body style="background:#020617;color:white;text-align:center;font-family:sans-serif">
-
-<h2>🧾 USER DASHBOARD</h2>
-
-<a href="shop.html" style="
-color:#00ffcc;
-text-decoration:none;
-display:inline-block;
-margin:10px;
-padding:10px 20px;
-border:1px solid #00ffcc;
-border-radius:10px;
-box-shadow:0 0 10px #00ffcc;
-">GO SHOP</a>
+<h2>🧾 DASHBOARD</h2>
+<a href="shop.html">GO SHOP</a>
 
 <div id="orders"></div>
 
@@ -25,72 +11,50 @@ box-shadow:0 0 10px #00ffcc;
 import { db, auth } from "./firebase.js";
 
 import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  doc,
-  setDoc,
-  deleteDoc
+collection,query,where,onSnapshot,
+doc,setDoc,deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-import {
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const div = document.getElementById("orders");
+onAuthStateChanged(auth,async user=>{
+ if(!user) location="index.html";
 
-// 🔥 MAIN AUTH + ONLINE TRACKER
-onAuthStateChanged(auth, async user=>{
-  if(!user) return location="index.html";
+ let ref=doc(db,"presence",user.uid);
 
-  // 👥 ONLINE TRACKER
-  const ref = doc(db,"presence",user.uid);
+ await setDoc(ref,{email:user.email});
 
-  await setDoc(ref,{
-    email:user.email,
-    online:true
+ window.addEventListener("beforeunload",()=>{
+  deleteDoc(ref);
+ });
+
+ const q=query(collection(db,"orders"),where("email","==",user.email));
+
+ onSnapshot(q,snap=>{
+  let html="";
+
+  snap.forEach(d=>{
+   let o=d.data();
+
+   html+=`
+   <div style="border:1px solid #00ffcc;margin:10px;padding:10px">
+   ${o.product}<br>
+   ${o.status}<br>
+
+   ${o.ref?`Ref: ${o.ref}`:""}
+   ${o.receipt?`<img src="${o.receipt}" width="100%">`:""}
+
+   ${o.status==="approved"?`
+   <hr>
+   USER:${o.username}<br>
+   PASS:${o.password}
+   `:"Waiting..."}
+
+   </div>`;
   });
 
-  window.addEventListener("beforeunload",()=>{
-    deleteDoc(ref);
-  });
-
-  // 📦 LOAD ORDERS
-  const q = query(
-    collection(db,"orders"),
-    where("email","==",user.email) // 🔥 FIX (email not "user")
-  );
-
-  onSnapshot(q,snap=>{
-    let html="";
-
-    snap.forEach(doc=>{
-      let o = doc.data();
-
-      html+=`
-      <div style="
-        border:1px solid #00ffcc;
-        margin:15px;
-        padding:15px;
-        border-radius:12px;
-        box-shadow:0 0 12px #00ffcc;
-        text-align:left;
-      ">
-        <b>Product:</b> ${o.product || "N/A"}<br>
-        <b>Status:</b> ${o.status}<br>
-
-        ${o.status==="approved" ? `
-        <hr>
-        <b>USERNAME:</b> ${o.username}<br>
-        <b>PASSWORD:</b> ${o.password}
-        ` : `<span style="color:orange">Waiting for approval...</span>`}
-      </div>`;
-    });
-
-    div.innerHTML = html || "<p>No orders yet</p>";
-  });
-
+  orders.innerHTML=html;
+ });
 });
 </script>
 
