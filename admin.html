@@ -1,22 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>ADMIN PRO</title>
+<title>Admin</title>
 <style>
-body{background:#020617;color:white;font-family:Arial;text-align:center;}
-.box{margin:20px;background:#1e293b;padding:15px;border-radius:10px;}
-input,select,button{width:90%;padding:10px;margin:5px;border-radius:10px;border:none;}
+body{background:black;color:#00ffcc;text-align:center;font-family:monospace;}
+input,select,button{width:80%;padding:10px;margin:5px;border-radius:10px;border:none;}
 button{background:#22c55e;color:white;}
-img{width:100%;border-radius:10px;}
+.card{border:1px solid #00ffcc;margin:10px;padding:10px;}
 </style>
 </head>
-
 <body>
 
 <h2>🔥 ADMIN PANEL</h2>
 
-<div class="box">
-<h3>Add Stock</h3>
 <select id="product">
 <option>CODM</option>
 <option>ML</option>
@@ -28,95 +24,88 @@ img{width:100%;border-radius:10px;}
 <input type="file" id="img">
 
 <button onclick="addStock()">ADD STOCK</button>
-</div>
 
-<div class="box">
 <h3>📦 STOCK</h3>
-<div id="stockList"></div>
-</div>
+<div id="stock"></div>
 
-<div class="box">
-<h3>📥 ORDERS</h3>
+<h3>🧾 ORDERS</h3>
 <div id="orders"></div>
-</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore,collection,addDoc,onSnapshot,doc,updateDoc,query,where,getDocs,limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getStorage,ref,uploadBytes,getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+import { getAuth,onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+getFirestore,collection,onSnapshot,addDoc,doc,updateDoc,getDocs,query,where,limit
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const firebaseConfig={
-apiKey:"AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA",
-authDomain:"accountshop-a94e8.firebaseapp.com",
-projectId:"accountshop-a94e8",
-appId:"1:396312062190:web:c4ac936bd7f5bc11f0ebff"
-};
+const firebaseConfig = { apiKey:"AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA", authDomain:"accountshop-a94e8.firebaseapp.com", projectId:"accountshop-a94e8", appId:"1:396312062190:web:c4ac936bd7f5bc11f0ebff" };
 
 const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
 const db=getFirestore(app);
-const storage=getStorage(app);
 
-// ADD STOCK
+const ADMIN="jhonlouiebaid92@gmail.com";
+
+onAuthStateChanged(auth,user=>{
+if(!user||user.email!=ADMIN) return location="index.html";
+
+loadStock();
+loadOrders();
+});
+
 window.addStock=async()=>{
 let file=img.files[0];
-if(!user.value||!pass.value||!file) return alert("Fill all!");
+if(!file) return alert("Add image");
 
-let sRef=ref(storage,"stocks/"+Date.now());
-await uploadBytes(sRef,file);
-let url=await getDownloadURL(sRef);
-
+let reader=new FileReader();
+reader.onload=async()=>{
 await addDoc(collection(db,"accounts"),{
+product:product.value,
 username:user.value,
 password:pass.value,
-product:product.value,
-image:url,
+image:reader.result,
 status:"available"
 });
-
 alert("Added!");
 };
+reader.readAsDataURL(file);
+};
 
-// STOCK
+function loadStock(){
 onSnapshot(collection(db,"accounts"),snap=>{
-stockList.innerHTML="";
+stock.innerHTML="";
 snap.forEach(d=>{
-let s=d.data();
-stockList.innerHTML+=`
-<div class="box">
-<img src="${s.image}">
-${s.product}<br>${s.username}<br>Status:${s.status}
-</div>`;
+let a=d.data();
+stock.innerHTML+=`<div class="card">${a.product} | ${a.status}</div>`;
 });
 });
+}
 
-// ORDERS + APPROVE
+function loadOrders(){
 onSnapshot(collection(db,"orders"),snap=>{
 orders.innerHTML="";
-snap.forEach(async d=>{
+snap.forEach(d=>{
 let o=d.data();
 
 orders.innerHTML+=`
-<div class="box">
-${o.email}<br>${o.product}<br>Status:${o.status}
-${o.proof?`<img src="${o.proof}">`:''}
-${o.status==="pending"
-? `<button onclick="approve('${d.id}','${o.product}')">APPROVE</button>`
-: "DONE"}
+<div class="card">
+${o.email}<br>
+Status: ${o.status}
+${o.status!="approved"
+? `<button onclick="approve('${d.id}')">Approve</button>`
+: "✅ Done"}
 </div>`;
 });
 });
+}
 
-window.approve=async(id,product)=>{
-
-const q=query(
-collection(db,"accounts"),
-where("status","==","available"),
-where("product","==",product),
-limit(1)
-);
+window.approve=async(id)=>{
+const q=query(collection(db,"accounts"),
+where("status","==","reserved"),
+limit(1));
 
 const snap=await getDocs(q);
-if(snap.empty) return alert("No stock!");
+if(snap.empty) return alert("No reserved");
 
 let acc=snap.docs[0];
 
@@ -124,10 +113,10 @@ await updateDoc(doc(db,"accounts",acc.id),{status:"sold"});
 
 await updateDoc(doc(db,"orders",id),{
 status:"approved",
-account:`USER:${acc.data().username}\nPASS:${acc.data().password}`
+account:`USER:${acc.data().username} PASS:${acc.data().password}`
 });
 
-alert("Auto sent!");
+alert("Sent!");
 };
 </script>
 
