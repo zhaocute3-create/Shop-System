@@ -6,14 +6,23 @@
 body{background:#0f172a;color:white;text-align:center}
 input,button{margin:5px;padding:10px;border-radius:10px;border:none}
 button{background:#00ff88;box-shadow:0 0 10px #00ff88}
+a{color:#00ffcc;text-decoration:none}
 </style>
 </head>
 <body>
 
 <h2>LOGIN</h2>
+
 <input id="email" placeholder="Email"><br>
 <input id="pass" type="password" placeholder="Password"><br>
+
 <button onclick="login()">LOGIN</button>
+
+<!-- 🔥 REGISTER LINK -->
+<p>
+No account?
+<a href="register.html">Register</a>
+</p>
 
 <script type="module">
 import { auth } from "./firebase.js";
@@ -31,6 +40,9 @@ window.login=()=>{
   }else{
     location="dashboard.html";
   }
+ })
+ .catch(err=>{
+  alert(err.message);
  });
 }
 </script>
