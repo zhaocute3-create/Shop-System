@@ -3,52 +3,36 @@
 <head>
 <title>Login</title>
 <style>
-body{background:#020617;color:white;text-align:center;font-family:Arial;}
-input,button{width:80%;padding:10px;margin:5px;border:none;border-radius:10px;}
-button{background:#22c55e;}
+body{background:#0f172a;color:white;text-align:center}
+input,button{margin:5px;padding:10px;border-radius:10px;border:none}
+button{background:#00ff88;box-shadow:0 0 10px #00ff88}
 </style>
 </head>
 <body>
 
-<h2>🔐 Login / Register</h2>
-
-<input id="email" placeholder="Email">
-<input id="pass" type="password" placeholder="Password">
-
-<button onclick="login()">Login</button>
-<button onclick="register()">Register</button>
+<h2>LOGIN</h2>
+<input id="email" placeholder="Email"><br>
+<input id="pass" type="password" placeholder="Password"><br>
+<button onclick="login()">LOGIN</button>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { auth } from "./firebase.js";
 import {
-getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword
+ signInWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const firebaseConfig = { apiKey:"AIzaSyDoG3cCVagED6RcQyy_noijvVibaf1AKwA", authDomain:"accountshop-a94e8.firebaseapp.com", projectId:"accountshop-a94e8", appId:"1:396312062190:web:c4ac936bd7f5bc11f0ebff" };
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const ADMIN = "jhonlouiebaid92@gmail.com";
 
 window.login=()=>{
-signInWithEmailAndPassword(auth,email.value,pass.value)
-.then((cred)=>{
-  let user = cred.user;
-
-  if(user.email === ADMIN){
-    location="admin.html"; // 👑 ADMIN
+ signInWithEmailAndPassword(auth,email.value,pass.value)
+ .then(res=>{
+  if(res.user.email===ADMIN){
+    location="admin.html";
   }else{
-    location="shop.html"; // 👤 USER
+    location="dashboard.html";
   }
-})
-.catch(e=>alert(e.message));
-};
-
-window.register=()=>{
-createUserWithEmailAndPassword(auth,email.value,pass.value)
-.then(()=>alert("Registered!"))
-.catch(e=>alert(e.message));
-};
+ });
+}
 </script>
 
 </body>
