@@ -42,6 +42,7 @@ body {
   padding:15px;
   text-align:center;
   background:#020617;
+  font-weight:bold;
 }
 
 .container { padding:20px; }
@@ -64,6 +65,10 @@ button, input {
 button {
   background:#22c55e;
   color:white;
+}
+
+.logout {
+  background:red;
 }
 
 .order {
@@ -107,15 +112,22 @@ button {
   <div id="orders"></div>
 </div>
 
+<!-- 🔥 LOGOUT BUTTON -->
+<div class="card">
+  <button class="logout" onclick="logout()">Logout</button>
+</div>
+
 </div>
 
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
 import { 
   getAuth, 
   onAuthStateChanged, 
+  signOut,
   setPersistence, 
   browserLocalPersistence 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -148,16 +160,13 @@ let lastBuyTime = 0;
 // 🔐 AUTH CHECK (FIXED)
 onAuthStateChanged(auth, (user) => {
 
-  // ⚠️ wag muna redirect habang naglo-load
   if (user === null) return;
 
-  // ❌ not logged in
   if (!user) {
     window.location.replace("index.html");
     return;
   }
 
-  // ✅ show UI
   document.getElementById("loading").style.display = "none";
   document.getElementById("main").style.display = "block";
 
@@ -212,6 +221,13 @@ window.buy = async function(){
   lastBuyTime = now;
 
   alert("Order sent!");
+};
+
+// 🔥 LOGOUT FUNCTION
+window.logout = function(){
+  signOut(auth).then(() => {
+    window.location.replace("index.html");
+  });
 };
 </script>
 
